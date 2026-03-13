@@ -95,14 +95,9 @@ CHINA_REGISTRY = "https://registry.npmmirror.com"
 def install_via_clawhub():
     print_step("通过 ClawHub 同步/更新技能...")
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
-    
-    # 引导未登录用户
-    if not IS_CLAWHUB_LOGGED_IN:
-        print(f"  {Colors.YELLOW}[提示] ClawHub 未登录，部分私有或加速功能可能受限。{Colors.ENDC}")
-        use_mirror = input(f"  是否启用国内镜像节点加速安装？(Y/n): ").strip().lower()
-        if use_mirror != 'n':
-            os.environ["CLAWHUB_REGISTRY"] = CHINA_REGISTRY
-            print(f"  {Colors.GREEN}已切换至镜像节点: {CHINA_REGISTRY}{Colors.ENDC}")
+    # 直接使用国内镜像加速
+    os.environ["CLAWHUB_REGISTRY"] = CHINA_REGISTRY
+    print(f"  {Colors.GREEN}已自动启用加速节点: {CHINA_REGISTRY}{Colors.ENDC}")
     
     for slug in CLAWHUB_SLUGS:
         target_path = os.path.join(base_dir, slug)
@@ -256,19 +251,22 @@ def diagnose_env():
 # 2. 技能编排 (Skill Orchestration)
 # 增加版本/分支管理，确保环境稳定性
 SKILL_STORE = {
-    "安全工具 (Security Tools) - [首选必装]": {
+    "核心工具 (Core Tools) - [推荐必装]": {
         "Skill-Vetter": {"url": "https://github.com/kiwi-miwi/skill-vetter.git", "tag": "main"},
-        "Clawscan": {"url": "https://github.com/openclaw/clawscan.git", "tag": "main"}
-    },
-    "通讯 (Communication)": {
-        "IM-Master-Skills": {"url": "https://github.com/LeoYeAI/openclaw-master-skills.git", "tag": "main"}
-    },
-    "基础工具 (Basic Tools)": {
         "Exec-Tool": {"url": "https://github.com/openclaw/exec-tool.git", "tag": "main"},
-        "Web-Search-Tavily": {"url": "https://github.com/tavily-ai/tavily-python.git", "tag": "master"}
+        "ClawRouter": {"url": "https://github.com/openclaw/claw-router.git", "tag": "main"},
+        "Channels-Setup": {"url": "https://github.com/openclaw/channels-setup.git", "tag": "main"}
     },
-    "优化工具 (Optimization Tools)": {
-        "ClawRouter": {"url": "https://github.com/openclaw/claw-router.git", "tag": "main"}
+    "高级 Agent 扩展 (Advanced Agent Skills)": {
+        "Self-Improving-Agent": {"url": "https://github.com/openclaw/self-improving-agent.git", "tag": "main"},
+        "Find-Skills": {"url": "https://github.com/openclaw/find-skills.git", "tag": "main"},
+        "Agent-Browser": {"url": "https://github.com/openclaw/agent-browser.git", "tag": "main"},
+        "Github-Skill": {"url": "https://github.com/openclaw/github.git", "tag": "main"}
+    },
+    "实用工具 (Utilities)": {
+        "Clawscan": {"url": "https://github.com/openclaw/clawscan.git", "tag": "main"},
+        "IM-Master-Skills": {"url": "https://github.com/LeoYeAI/openclaw-master-skills.git", "tag": "main"},
+        "Web-Search-Tavily": {"url": "https://github.com/tavily-ai/tavily-python.git", "tag": "master"}
     }
 }
 
@@ -419,30 +417,30 @@ def install_feishu_plugin():
         print(f"{Colors.RED}飞书安装异常: {str(e)}{Colors.ENDC}")
 
 def install_via_clawhub():
-    print_step("通过 ClawHub 同步/更新核心技能 (官方源)...")
+    print_step("通过 ClawHub 尝试同步/更新 (可选)...")
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
     
-    # 引导未登录用户
-    if not IS_CLAWHUB_LOGGED_IN:
-        print(f"  {Colors.YELLOW}[提示] ClawHub 未登录。部分私有/付费技能可能会安装失败。{Colors.ENDC}")
+    # 自动启用国内镜像，避开登录逻辑干扰
+    os.environ["CLAWHUB_REGISTRY"] = CHINA_REGISTRY
     
     for slug in CORE_SLUGS:
         target_path = os.path.join(base_dir, slug)
         
         if os.path.exists(target_path):
-            # 已存在的由前面的流程或后续同步逻辑处理，此处仅负责初次辅助安装
             continue
             
-        print(f"  [ClawHub] 尝试拉取 {slug} ... ", end="", flush=True)
+        print(f"  [ClawHub] 尝试后台拉取 {slug} ... ", end="", flush=True)
         try:
+            # 增加参数尝试跳过登录交互
             result = subprocess.run(['npx', '-y', 'clawhub@latest', 'install', slug, '--no-input', '--dir', base_dir], 
                                  capture_output=True, text=True)
             if result.returncode == 0:
                 print(f"{Colors.GREEN}完成{Colors.ENDC}")
             else:
-                print(f"{Colors.YELLOW}失败 (跳过){Colors.ENDC}")
-        except Exception as e:
-            print(f"{Colors.RED}异常: {str(e)}{Colors.ENDC}")
+                # 即使失败也不再报错，提示已转入 Git 自动补齐
+                print(f"{Colors.BLUE}已转入 Git 补全流程{Colors.ENDC}")
+        except:
+            print(f"{Colors.BLUE}跳过{Colors.ENDC}")
 
 def install_skills():
     print_step("同步基础安装包 (Git Pull/Clone)...")
