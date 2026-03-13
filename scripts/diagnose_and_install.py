@@ -266,6 +266,61 @@ SKILL_STORE = {
     }
 }
 
+import urllib.request
+import ssl
+
+def setup_persona():
+    print_step("配置内置 AI 人设 (Persona)")
+    print(f"  {Colors.BLUE}正在从 agency-agents 仓库获取人设模板...{Colors.ENDC}")
+    
+    # 预设几个经典高分人设供用户选择
+    personas = [
+        {"name": "AI 工程师 (AI Engineer)", "path": "engineering/engineering-ai-engineer.md"},
+        {"name": "资深前端开发 (Frontend Developer)", "path": "engineering/engineering-frontend-developer.md"},
+        {"name": "软件架构师 (Software Architect)", "path": "engineering/engineering-software-architect.md"},
+        {"name": "飞书集成开发专家 (Feishu Integration Developer)", "path": "engineering/engineering-feishu-integration-developer.md"},
+        {"name": "代码审查专家 (Code Reviewer)", "path": "engineering/engineering-code-reviewer.md"},
+        {"name": "跳过配置", "path": None}
+    ]
+    
+    for i, p in enumerate(personas):
+        print(f"  [{i+1}] {p['name']}")
+        
+    choice = input(f"\n{Colors.YELLOW}请选择一个内置人设作为当前 Agent 的默认属性 (1-{len(personas)}): {Colors.ENDC}").strip()
+    
+    try:
+        idx = int(choice) - 1
+        if idx < 0 or idx >= len(personas) or personas[idx]["path"] is None:
+            print(f"  {Colors.GREEN}已跳过人设配置。{Colors.ENDC}")
+            return
+            
+        selected = personas[idx]
+        print(f"  正在下载人设: {selected['name']} ... ", end="", flush=True)
+        
+        # 从 github raw 下载
+        raw_url = f"https://raw.githubusercontent.com/msitarzewski/agency-agents/main/{selected['path']}"
+        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+        persona_path = os.path.join(base_dir, "persona.md")
+        
+        # 忽略 SSL 警告
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        
+        req = urllib.request.Request(raw_url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, context=ctx) as response:
+            content = response.read().decode('utf-8')
+            
+        with open(persona_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+            
+        print(f"{Colors.GREEN}成功{Colors.ENDC}")
+        print(f"  {Colors.YELLOW}人设已保存至: {persona_path}{Colors.ENDC}")
+        print(f"  {Colors.BLUE}(你可以直接将该文件内容作为 System Prompt 注入 Agent){Colors.ENDC}")
+        
+    except Exception as e:
+        print(f"{Colors.RED}获取或保存人设失败: {e}{Colors.ENDC}")
+
 # 核心技能标识 (Slugs)
 CORE_SLUGS = [
     "skill-vetter", "exec-tool", "weather-skill", "claw-router", "channels-setup",
@@ -423,6 +478,9 @@ def main():
     
     # 交互式配置 (替代手动修改 .env.example)
     interactive_config()
+    
+    # 引导内置人设
+    setup_persona()
     
     print_step("配置任务完成！")
     print("提示: 核心内容已就绪。请查看指南 ./docs/USAGE_GUIDE.md")

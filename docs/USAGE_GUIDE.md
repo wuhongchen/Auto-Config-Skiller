@@ -29,7 +29,13 @@ python3 scripts/diagnose_and_install.py
 - 脚本将引导您完成官方飞书工具包的配置。
 - 自动创建或关联飞书机器人，并完成一键授权。
 
-### 4. 技能库持续维护 (Update & Maintenance)
+### 4. 内置人设注入 (Persona Setup)
+**场景**：需要赋予 Robot 专业的灵魂设定。
+**动作**：
+- 在配置结尾，为您准备了来自 `agency-agents` 的高分人设库。
+- 选择后会自动下载完整的 Persona Prompt 到 `persona.md` 中，随时可复制到 System Prompt 注入灵魂。
+
+### 5. 技能库持续维护 (Update & Maintenance)
 **场景**：需要同步最新的技能包代码。
 **命令**：
 - 建议通过 `npx clawhub update` 维护已通过 ClawHub 安装的插件。
