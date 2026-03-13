@@ -1,0 +1,20 @@
+{
+  "name": "auto-config-skiller",
+  "version": "1.0.0",
+  "description": "OpenClaw 自动环境诊断与技能一键配置工具",
+  "main": "scripts/diagnose_and_install.py",
+  "scripts": {
+    "install": "chmod +x setup.sh && ./setup.sh"
+  },
+  "keywords": [
+    "openclaw-skill",
+    "automation",
+    "setup"
+  ],
+  "author": "wuhongchen",
+  "license": "MIT",
+  "openclaw": {
+    "type": "skill",
+    "entry": "scripts/diagnose_and_install.py"
+  }
+}

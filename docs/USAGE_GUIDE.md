@@ -2,6 +2,19 @@
 
 本助手旨在解决 OpenClaw 新手“环境配置慢、技能安装杂、人设缺失”的痛点，提供一键式、傻瓜化的配置体验。
 
+## 📦 一键安装 (Quick Install)
+
+如果您已经安装了 OpenClaw，可以通过以下原生命令直接安装并启动本工具：
+
+```bash
+npx clawhub install https://github.com/wuhongchen/Auto-Config-Skiller.git
+```
+
+安装完成后，直接在该目录下运行：
+```bash
+./setup.sh
+```
+
 ---
 
 ## 🛠 一键配置标准工作流 (Standard Workflow)
