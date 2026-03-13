@@ -27,11 +27,13 @@
    - **资源评估**: 检测磁盘空间等基础硬件状态。
 2. **分类调研 (Research)**
    - 自动拉取 ClawHub 推荐列表，识别核心工具。
-3. **自动化安装 (Auto-Install)**
-   - 交互式选择分类或全量安装。
-   - **多源加速**: 支持 ClawHub 与 Tencent SkillHub (国内镜像)，自动避开登录限制。
-   - **智能配置**: 自动完成 `.env` 交互式引导配置。
-   - **灵魂注入**: 引导式从 `agency-agents` 库挑选下载高分 AI 人设模板。
+3. **全流程自动化安装 (Full Auto-Install)**
+   - **一键启动**: 通过 `./setup.sh` 开启傻瓜化配置流。
+   - **多源加速**: 集成 ClawHub 与 Tencent SkillHub，自动绕过登录限制与网络障碍。
+   - **交互配环境**: 告别 `.env.example` 手动修改，实现对话式参数配置。
+   - **灵魂注入**: 预设 `agency-agents` 库，一键下载高分 AI 人设 Prompt。
+
+详细的操作指引与场景说明请参阅：[使用指南 (USAGE_GUIDE.md)](./docs/USAGE_GUIDE.md)
 
 
 ## 维护者
