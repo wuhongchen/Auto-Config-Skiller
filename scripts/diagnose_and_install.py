@@ -365,16 +365,36 @@ def install_via_skillhub():
         except Exception as e:
             print(f"{Colors.RED}异常: {str(e)}{Colors.ENDC}")
 
+def configure_feishu_streaming():
+    print_step("优化飞书流式卡片配置...")
+    commands = [
+        ['openclaw', 'config', 'set', 'channels.feishu.streaming', 'true'],
+        ['openclaw', 'config', 'set', 'channels.feishu.footer.elapsed', 'true'],
+        ['openclaw', 'config', 'set', 'channels.feishu.footer.status', 'true']
+    ]
+    for cmd in commands:
+        print(f"  执行: {' '.join(cmd)} ... ", end="", flush=True)
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode == 0:
+                print(f"{Colors.GREEN}成功{Colors.ENDC}")
+            else:
+                print(f"{Colors.YELLOW}忽略 (可能环境未完全就绪){Colors.ENDC}")
+        except:
+            print(f"{Colors.RED}失败{Colors.ENDC}")
+
 def install_feishu_plugin():
     print_step("初始化飞书官方通讯插件...")
     print(f"  [飞书] 正在调用官方安装程序 ... ", end="", flush=True)
     try:
-        # 该命令会启动交互式安装或诊断修复
+        # 该命令会启动交互式安装 or 诊断修复
         print(f"\n{Colors.BLUE}>>> 提示: 接下来将启动官方飞书工具，如需跳过请 Ctrl+C{Colors.ENDC}")
         result = subprocess.run(['npx', '-y', '@larksuite/openclaw-lark-tools', 'install'], 
                              text=True)
         if result.returncode == 0:
             print(f"{Colors.GREEN}飞书插件部署完成{Colors.ENDC}")
+            # 安装成功后自动执行流式配置
+            configure_feishu_streaming()
         else:
             print(f"{Colors.RED}飞书插件安装退出{Colors.ENDC}")
     except Exception as e:
