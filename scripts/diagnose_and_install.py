@@ -63,6 +63,22 @@ def check_openclaw_version():
     except:
         print(f"{Colors.RED}未安装或不在 PATH 中{Colors.ENDC}")
 
+def check_clawhub():
+    print(f"  - ClawHub CLI: ", end="", flush=True)
+    try:
+        # 尝试通过 npx 运行 clawhub (不带 -y 避免自动安装，只是探测)
+        result = subprocess.run(['npx', 'clawhub', '--cli-version'], capture_output=True, text=True, timeout=5)
+        if result.returncode == 0:
+            version = result.stdout.strip().split()[-1]
+            print(f"{Colors.GREEN}已就绪 ({version}){Colors.ENDC}")
+            return True
+        else:
+            print(f"{Colors.YELLOW}未全局安装 (建议通过 npx 使用){Colors.ENDC}")
+            return False
+    except:
+        print(f"{Colors.RED}未检测到 Node.js/npx{Colors.ENDC}")
+        return False
+
 def diagnose_env():
     print_step("正在开启多维度环境诊断...")
     
@@ -80,6 +96,9 @@ def diagnose_env():
         
     # OpenClaw 版本检查
     check_openclaw_version()
+    
+    # ClawHub 检查
+    check_clawhub()
     
     # 网络检查
     check_network()
@@ -116,9 +135,40 @@ SKILL_STORE = {
     }
 }
 
+# 推荐通过 ClawHub 安装的 Slug (针对官方/核心 Skill)
+CLAWHUB_SLUGS = [
+    "skill-vetter",
+    "exec-tool",
+    "weather-skill",
+    "market-news-skiller"
+]
+
+def install_via_clawhub():
+    print_step("尝试通过 ClawHub 安装核心技能...")
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+    
+    for slug in CLAWHUB_SLUGS:
+        target_path = os.path.join(base_dir, slug)
+        if os.path.exists(target_path):
+            print(f"  [已存在] {slug} - 跳过")
+            continue
+            
+        print(f"  [ClawHub] 正在安装 {slug} ... ", end="", flush=True)
+        try:
+            # 使用 npx -y 确保自动下载执行
+            # 添加 --no-input 避免交互，--dir 指定安装位置
+            result = subprocess.run(['npx', '-y', 'clawhub@latest', 'install', slug, '--no-input', '--dir', base_dir], 
+                                 capture_output=True, text=True)
+            if result.returncode == 0:
+                print(f"{Colors.GREEN}完成{Colors.ENDC}")
+            else:
+                print(f"{Colors.YELLOW}失败 (可能需登录或网络限制){Colors.ENDC}")
+                # print(f"    调试信息: {result.stderr.strip()}")
+        except Exception as e:
+            print(f"{Colors.RED}异常: {str(e)}{Colors.ENDC}")
 
 def install_skills():
-    print_step("开始基础安装包编排...")
+    print_step("开始基础安装包编排 (Git Clone 备选)...")
     
     # 获取 skills 根目录 (假设脚本在 auto-config-skiller/scripts 下)
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
@@ -130,29 +180,34 @@ def install_skills():
             if os.path.exists(target_path):
                 print(f"  [已存在] {name} - 跳过")
             else:
-                print(f"  [安装中] {name} ...", end="", flush=True)
+                print(f"  [Git 克隆] {name} ... ", end="", flush=True)
                 try:
                     # 真正执行克隆
                     result = subprocess.run(['git', 'clone', '--depth', '1', url, target_path], 
                                          capture_output=True, text=True)
                     if result.returncode == 0:
-                        print(f" {Colors.GREEN}完成{Colors.ENDC}")
+                        print(f"{Colors.GREEN}完成{Colors.ENDC}")
                     else:
-                        print(f" {Colors.RED}失败: {result.stderr.strip()}{Colors.ENDC}")
+                        print(f"{Colors.RED}失败: {result.stderr.strip()}{Colors.ENDC}")
                 except Exception as e:
-                    print(f" {Colors.RED}异常: {str(e)}{Colors.ENDC}")
-
+                    print(f"{Colors.RED}异常: {str(e)}{Colors.ENDC}")
 
 def main():
     print(f"{Colors.HEADER}{Colors.BOLD}=======================================")
-    print("   OpenClaw 自动配置助手 (诊断 & 安装)")
+    print("   OpenClaw 自动配置助手 (诊断 & 分类安装)")
     print(f"======================================={Colors.ENDC}")
     
     diagnose_env()
+    
+    # 优先使用 ClawHub 安装
+    install_via_clawhub()
+    
+    # 作为补全使用 Git 安装
     install_skills()
     
     print_step("配置引导")
     print("所有工具已编排。请手动检查 .env.example 并配置环境变量。")
+    print("提示: 核心 Skill 推荐通过 `npx clawhub login` 登录后获取完整权限。")
     print(f"\n{Colors.GREEN}{Colors.BOLD}🎉 初始化完成！{Colors.ENDC}")
 
 if __name__ == "__main__":
