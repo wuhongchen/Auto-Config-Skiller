@@ -185,31 +185,33 @@ def interactive_config():
 
 def check_skillhub():
     print(f"  - Tencent SkillHub: ", end="", flush=True)
-    try:
-        # 1. 优先尝试 PATH 中的命令
-        # 2. 兜底尝试用户本地常用安装路径
-        common_paths = ['skillhub', os.path.expanduser('~/.local/bin/skillhub')]
-        
-        for path in common_paths:
+    # 允许的路径
+    common_paths = ['skillhub', os.path.expanduser('~/.local/bin/skillhub')]
+    
+    for path in common_paths:
+        try:
             result = subprocess.run([path, '--version'], capture_output=True, text=True, timeout=5)
             if result.returncode == 0:
                 print(f"{Colors.GREEN}已就绪{Colors.ENDC}")
                 return True
-        
-        print(f"{Colors.YELLOW}未发现{Colors.ENDC}")
-        return False
-    except:
-        print(f"{Colors.YELLOW}未检出{Colors.ENDC}")
-        return False
+        except:
+            continue
+    
+    print(f"{Colors.YELLOW}未发现{Colors.ENDC}")
+    return False
 
 def install_skillhub_cli():
-    print_step("正在部署 Tencent SkillHub (国内加速源)...")
+    print_step("正在自动部署 Tencent SkillHub (国内加速源)...")
     try:
-        # 使用官方推荐的一键安装脚本 (仅安装 CLI)
+        # 使用用户提供的快速安装脚本
         install_cmd = "curl -fsSL https://skillhub-1388575217.cos.ap-guangzhou.myqcloud.com/install/install.sh | bash -s -- --no-skills"
         result = subprocess.run(install_cmd, shell=True, text=True)
         if result.returncode == 0:
             print(f"{Colors.GREEN}SkillHub CLI 部署成功{Colors.ENDC}")
+            # 自动将本地路径加入当前进程环境，确保后续直接调用有效
+            local_bin = os.path.expanduser('~/.local/bin')
+            if local_bin not in os.environ["PATH"]:
+                os.environ["PATH"] = f"{local_bin}:{os.environ['PATH']}"
             return True
         else:
             print(f"{Colors.RED}SkillHub 部署失败{Colors.ENDC}")
@@ -339,27 +341,27 @@ def install_via_skillhub():
     skillhub_path = 'skillhub'
     potential_paths = ['skillhub', os.path.expanduser('~/.local/bin/skillhub')]
     
-    has_cli = False
-    for p in potential_paths:
-        if subprocess.run([p, '--version'], capture_output=True).returncode == 0:
-            skillhub_path = p
-            has_cli = True
-            break
+    def get_skillhub_cli():
+        for p in potential_paths:
+            try:
+                if subprocess.run([p, '--version'], capture_output=True).returncode == 0:
+                    return p
+            except:
+                continue
+        return None
+
+    skillhub_path = get_skillhub_cli()
 
     def print_skillhub_skip_msg():
         print(f"\n{Colors.YELLOW}⚠️ 可选模块执行失败（非核心，不影响使用）{Colors.ENDC}")
-        print("腾讯SkillHub同步失败：当前环境未安装skillhub CLI工具，该模块是可选的加速源，不影响现有功能使用。如果需要使用SkillHub源同步技能，可以先安装skillhub工具后重新执行。\n")
+        print("因为没装skillhub工具，腾讯SkillHub同步模块自动跳过啦，飞书配置引导也自动跳过了，完全不影响现有功能哒😘\n")
         print(f"{Colors.GREEN}现在Auto-Config-Skiller的所有核心能力已全部就绪，可以直接使用环境诊断、自动配置、技能管理等功能~{Colors.ENDC}\n")
 
-    if not has_cli:
-        should_install = input(f"  {Colors.YELLOW}未检出 skillhub CLI，是否立即安装以加速国内下载？(Y/n): {Colors.ENDC}").strip().lower()
-        if should_install != 'n':
-            if not install_skillhub_cli():
-                print_skillhub_skip_msg()
-                return
-            else:
-                # 安装成功后再次确定路径
-                skillhub_path = os.path.expanduser('~/.local/bin/skillhub')
+    if not skillhub_path:
+        # 改为更加主动的安装策略
+        print(f"  {Colors.YELLOW}[!] 未发现 SkillHub CLI，准备自动安装以开启加速模式...{Colors.ENDC}")
+        if install_skillhub_cli():
+            skillhub_path = get_skillhub_cli() or os.path.expanduser('~/.local/bin/skillhub')
         else:
             print_skillhub_skip_msg()
             return
