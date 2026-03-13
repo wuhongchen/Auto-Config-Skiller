@@ -9,8 +9,7 @@
 为了让 OpenClaw 更具战斗力，我们将技能分为以下四个核心维度：
 
 1. **通讯 (Communication)**
-   - `IM-Master`: 统一管理飞书、钉钉、企业微信。
-   - `AgentMail`: 为 AI 提供独立的邮箱服务。
+   - `Feishu-OpenClaw`: 飞书官方插件，支持文档、群聊、日历及 Meego 深度集成。
 2. **基础工具 (Basic Tools)**
    - `CN-Life Toolkit`: 国内生活服务（天气、快递、油价等）。
    - `Exec Tool / Web Search`: 核心执行与搜索能力。
@@ -23,8 +22,7 @@
 
 ## 工作流 (Workflows)
 1. **环境诊断 (Diagnosis)**
-   - **核心环境**: 自动检测 Python, Git 环境及 OpenClaw 版本信息。
-   - **网络排查**: 检查 GitHub 及镜像源的连通性，识别是否需要代理。
+   - **官方通道**: 集成飞书诊断与修复工具 `openclaw-lark-tools`。
    - **配置自检**: 自动识别 `.env` 配置文件状态及目录写入权限。
    - **资源评估**: 检测磁盘空间等基础硬件状态。
 2. **分类调研 (Research)**

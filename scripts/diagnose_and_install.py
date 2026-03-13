@@ -79,6 +79,22 @@ def check_clawhub():
         print(f"{Colors.RED}未检测到 Node.js/npx{Colors.ENDC}")
         return False
 
+def check_feishu_tools():
+    print(f"  - 飞书官方工具栈: ", end="", flush=True)
+    try:
+        # 探测飞书官方工具包
+        result = subprocess.run(['npx', '@larksuite/openclaw-lark-tools', '--help'], 
+                             capture_output=True, text=True, timeout=5)
+        if result.returncode == 0:
+            print(f"{Colors.GREEN}发现并可用{Colors.ENDC}")
+            return True
+        else:
+            print(f"{Colors.YELLOW}待部署{Colors.ENDC}")
+            return False
+    except:
+        print(f"{Colors.RED}无法调用 (需 Node.js){Colors.ENDC}")
+        return False
+
 def diagnose_env():
     print_step("正在开启多维度环境诊断...")
     
@@ -97,6 +113,9 @@ def diagnose_env():
     # OpenClaw 版本检查
     check_openclaw_version()
     
+    # 飞书工具检查
+    check_feishu_tools()
+    
     # ClawHub 检查
     check_clawhub()
     
@@ -108,13 +127,6 @@ def diagnose_env():
     
     # 配置检查
     check_env_file()
-    
-    # 磁盘空间 (Mac/Linux)
-    try:
-        total, used, free = shutil.disk_usage("/")
-        print(f"  - 可用磁盘空间: {free // (2**30)} GB ... {Colors.GREEN}通过{Colors.ENDC}")
-    except:
-        pass
 
 # 2. 技能编排 (Skill Orchestration)
 SKILL_STORE = {
@@ -123,8 +135,7 @@ SKILL_STORE = {
         "Clawscan": "https://github.com/openclaw/clawscan.git"
     },
     "通讯 (Communication)": {
-        "IM-Master-Skills": "https://github.com/LeoYeAI/openclaw-master-skills.git",
-        "AgentMail": "https://github.com/openclaw/agentmail.git"
+        "IM-Master-Skills": "https://github.com/LeoYeAI/openclaw-master-skills.git"
     },
     "基础工具 (Basic Tools)": {
         "Exec-Tool": "https://github.com/openclaw/exec-tool.git",
@@ -134,6 +145,22 @@ SKILL_STORE = {
         "ClawRouter": "https://github.com/openclaw/claw-router.git"
     }
 }
+
+def install_feishu_plugin():
+    print_step("初始化飞书官方通讯插件...")
+    print(f"  [飞书] 正在调用官方安装程序 ... ", end="", flush=True)
+    try:
+        # 该命令会启动交互式安装或诊断修复
+        # 注意：此处不使用 --no-input 是因为飞书工具通常需要引导创建机器人
+        print(f"\n{Colors.BLUE}>>> 提示: 接下来将启动官方飞书工具，请根据屏幕提示操作 (如需跳过请 Ctrl+C){Colors.ENDC}")
+        result = subprocess.run(['npx', '-y', '@larksuite/openclaw-lark-tools', 'install'], 
+                             text=True)
+        if result.returncode == 0:
+            print(f"{Colors.GREEN}飞书插件环境部署完成{Colors.ENDC}")
+        else:
+            print(f"{Colors.RED}飞书插件安装退出 (code: {result.returncode}){Colors.ENDC}")
+    except Exception as e:
+        print(f"{Colors.RED}飞书安装异常: {str(e)}{Colors.ENDC}")
 
 # 推荐通过 ClawHub 安装的 Slug (针对官方/核心 Skill)
 CLAWHUB_SLUGS = [
@@ -198,6 +225,9 @@ def main():
     print(f"======================================={Colors.ENDC}")
     
     diagnose_env()
+    
+    # 飞书官方插件部署
+    install_feishu_plugin()
     
     # 优先使用 ClawHub 安装
     install_via_clawhub()
