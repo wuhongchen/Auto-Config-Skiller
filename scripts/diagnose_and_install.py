@@ -183,6 +183,37 @@ def interactive_config():
     
     print(f"\n{Colors.GREEN}✔ .env 配置文件已生成！{Colors.ENDC}")
 
+def check_skillhub():
+    print(f"  - Tencent SkillHub: ", end="", flush=True)
+    try:
+        # 探测 skillhub 命令
+        result = subprocess.run(['skillhub', '--version'], capture_output=True, text=True, timeout=5)
+        if result.returncode == 0:
+            print(f"{Colors.GREEN}已就绪{Colors.ENDC}")
+            return True
+        else:
+            print(f"{Colors.YELLOW}未发现{Colors.ENDC}")
+            return False
+    except:
+        print(f"{Colors.YELLOW}未检出{Colors.ENDC}")
+        return False
+
+def install_skillhub_cli():
+    print_step("正在部署 Tencent SkillHub (国内加速源)...")
+    try:
+        # 使用官方推荐的一键安装脚本 (仅安装 CLI)
+        install_cmd = "curl -fsSL https://skillhub-1388575217.cos.ap-guangzhou.myqcloud.com/install/install.sh | bash -s -- --no-skills"
+        result = subprocess.run(install_cmd, shell=True, text=True)
+        if result.returncode == 0:
+            print(f"{Colors.GREEN}SkillHub CLI 部署成功{Colors.ENDC}")
+            return True
+        else:
+            print(f"{Colors.RED}SkillHub 部署失败{Colors.ENDC}")
+            return False
+    except Exception as e:
+        print(f"{Colors.RED}部署异常: {str(e)}{Colors.ENDC}")
+        return False
+
 def diagnose_env():
     print_step("正在开启多维度环境诊断...")
     
@@ -206,6 +237,9 @@ def diagnose_env():
     
     # ClawHub 检查
     check_clawhub()
+
+    # SkillHub 检查
+    check_skillhub()
     
     # 网络检查
     check_network()
@@ -232,6 +266,40 @@ SKILL_STORE = {
     }
 }
 
+# 核心技能标识 (Slugs)
+CORE_SLUGS = ["skill-vetter", "exec-tool", "weather-skill", "claw-router"]
+
+def install_via_skillhub():
+    print_step("通过 Tencent SkillHub 同步核心技能...")
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+    
+    # 检测是否安装了 skillhub
+    has_cli = subprocess.run(['skillhub', '--version'], capture_output=True).returncode == 0
+    if not has_cli:
+        should_install = input(f"  {Colors.YELLOW}未检出 skillhub CLI，是否立即安装以加速国内下载？(Y/n): {Colors.ENDC}").strip().lower()
+        if should_install != 'n':
+            if not install_skillhub_cli():
+                return
+        else:
+            return
+
+    for slug in CORE_SLUGS:
+        target_path = os.path.join(base_dir, slug)
+        if os.path.exists(target_path):
+            print(f"  [已存在] {slug} - 跳过同步")
+            continue
+            
+        print(f"  [SkillHub] 正在安装 {slug} ... ", end="", flush=True)
+        try:
+            result = subprocess.run(['skillhub', 'install', slug, '--dir', base_dir], 
+                                 capture_output=True, text=True)
+            if result.returncode == 0:
+                print(f"{Colors.GREEN}完成{Colors.ENDC}")
+            else:
+                print(f"{Colors.YELLOW}跳过 (可能仓库未收录){Colors.ENDC}")
+        except Exception as e:
+            print(f"{Colors.RED}异常: {str(e)}{Colors.ENDC}")
+
 def install_feishu_plugin():
     print_step("初始化飞书官方通讯插件...")
     print(f"  [飞书] 正在调用官方安装程序 ... ", end="", flush=True)
@@ -247,35 +315,22 @@ def install_feishu_plugin():
     except Exception as e:
         print(f"{Colors.RED}飞书安装异常: {str(e)}{Colors.ENDC}")
 
-# 推荐通过 ClawHub 安装的 Slug (针对官方/核心 Skill)
-CLAWHUB_SLUGS = [
-    "skill-vetter",
-    "exec-tool",
-    "weather-skill"
-]
-
 def install_via_clawhub():
-    print_step("通过 ClawHub 同步/更新核心技能...")
+    print_step("通过 ClawHub 同步/更新核心技能 (官方源)...")
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
     
-    for slug in CLAWHUB_SLUGS:
+    # 引导未登录用户
+    if not IS_CLAWHUB_LOGGED_IN:
+        print(f"  {Colors.YELLOW}[提示] ClawHub 未登录。部分私有/付费技能可能会安装失败。{Colors.ENDC}")
+    
+    for slug in CORE_SLUGS:
         target_path = os.path.join(base_dir, slug)
         
         if os.path.exists(target_path):
-            print(f"  [已存在] {slug} - 正在同步更新 ... ", end="", flush=True)
-            # 对于 ClawHub，我们可以调用 update 命令
-            try:
-                result = subprocess.run(['npx', '-y', 'clawhub@latest', 'update', slug, '--no-input', '--dir', base_dir], 
-                                     capture_output=True, text=True)
-                if result.returncode == 0:
-                    print(f"{Colors.GREEN}已是最新{Colors.ENDC}")
-                else:
-                    print(f"{Colors.YELLOW}跳过更新 (可能需登录){Colors.ENDC}")
-            except:
-                print(f"{Colors.YELLOW}失败{Colors.ENDC}")
+            # 已存在的由前面的流程或后续同步逻辑处理，此处仅负责初次辅助安装
             continue
             
-        print(f"  [ClawHub] 正在安装 {slug} ... ", end="", flush=True)
+        print(f"  [ClawHub] 尝试拉取 {slug} ... ", end="", flush=True)
         try:
             result = subprocess.run(['npx', '-y', 'clawhub@latest', 'install', slug, '--no-input', '--dir', base_dir], 
                                  capture_output=True, text=True)
@@ -294,21 +349,31 @@ def install_skills():
         print(f"\n{Colors.BLUE}{Colors.BOLD}--- {category} ---{Colors.ENDC}")
         for name, config in skills.items():
             target_path = os.path.join(base_dir, name)
+            # 兼容性处理：如果文件夹名与 Slug 不同，但已由 Hub 安装，则跳过
+            found_hub = False
+            for s in CORE_SLUGS:
+                if os.path.exists(os.path.join(base_dir, s)) and s.lower() in name.lower():
+                    found_hub = True
+                    break
+            
+            if found_hub:
+                print(f"  [Hub已覆盖] {name}")
+                continue
+
             url = config["url"]
             tag = config.get("tag", "main")
             
             if os.path.exists(target_path):
                 print(f"  [已存在] {name} - 正在拉取更新 ... ", end="", flush=True)
                 try:
-                    # 进入目录执行 git pull
                     result = subprocess.run(['git', '-C', target_path, 'pull', 'origin', tag], 
                                          capture_output=True, text=True)
                     if result.returncode == 0:
                         print(f"{Colors.GREEN}已更新{Colors.ENDC}")
                     else:
-                        print(f"{Colors.YELLOW}更新失败 (本地可能有改动){Colors.ENDC}")
-                except Exception as e:
-                    print(f"{Colors.RED}异常: {str(e)}{Colors.ENDC}")
+                        print(f"{Colors.YELLOW}更新失败 (跳过){Colors.ENDC}")
+                except:
+                    print(f"{Colors.YELLOW}异常{Colors.ENDC}")
             else:
                 print(f"  [Git 克隆] {name} (适配分支: {tag}) ... ", end="", flush=True)
                 try:
@@ -317,7 +382,7 @@ def install_skills():
                     if result.returncode == 0:
                         print(f"{Colors.GREEN}完成{Colors.ENDC}")
                     else:
-                        print(f"{Colors.RED}失败: {result.stderr.strip()}{Colors.ENDC}")
+                        print(f"{Colors.RED}失败{Colors.ENDC}")
                 except Exception as e:
                     print(f"{Colors.RED}异常: {str(e)}{Colors.ENDC}")
 
@@ -326,9 +391,9 @@ def main():
     print("   OpenClaw 自动配置助手 (傻瓜模式)")
     print(f"======================================={Colors.ENDC}")
     print(f"{Colors.BLUE}本工具将自动完成以下操作：")
-    print("1. 诊断当前磁盘、网络、版本环境")
-    print("2. 自动配置飞书官方通讯渠道")
-    print("3. 一键安装推荐的 OpenClaw 核心技能库")
+    print("1. 诊断环境、配置飞书通道")
+    print("2. 自动集成腾讯 SkillHub 加速源 (免登录同步核心技能)")
+    print("3. 全量编排核心技能库并进行交互式配置")
     print(f"---------------------------------------{Colors.ENDC}")
     
     diagnose_env()
@@ -336,17 +401,21 @@ def main():
     # 飞书官方插件部署
     install_feishu_plugin()
     
-    # 优先使用 ClawHub 安装
+    # --- 技能安装优先级流 ---
+    # 优先使用国内加速源 SkillHub (解决付费/登录/网络限制)
+    install_via_skillhub()
+    
+    # 尝试官方源补全 (ClawHub)
     install_via_clawhub()
     
-    # 作为补全使用 Git 安装
+    # 备选补全 Git 安装
     install_skills()
     
     # 交互式配置 (替代手动修改 .env.example)
     interactive_config()
     
-    print_step("配置操作成功！")
-    print("提示: 核心内容已就绪。请根据文档 ./docs/USAGE_GUIDE.md 完成最后配置。")
+    print_step("配置任务完成！")
+    print("提示: 核心内容已就绪。请查看指南 ./docs/USAGE_GUIDE.md")
     print(f"\n{Colors.GREEN}{Colors.BOLD}🎉 自动化流程执行完毕！{Colors.ENDC}")
 
 if __name__ == "__main__":

@@ -19,9 +19,9 @@ python3 scripts/diagnose_and_install.py
 ### 2. 必装技能包快速同步 (One-Click Install)
 **场景**：快速补全 OpenClaw 生态中最常用、最核心的工具。
 **动作**：
-- 流程会自动通过 **ClawHub** 优先安装官方推荐技能（如 `skill-vetter`）。
-- 自动克隆通讯与优化类技能（如 `IM-Master`, `ClawRouter`）。
-- **智能版本管理**：检测本地已安装的技能包，避免重复克隆，并为不同技能匹配适配的版本。
+- **混合安装路径**：优先通过 **Tencent SkillHub** (腾讯源) 安装 `skill-vetter` 等核心组件，解决官方源需要登录或付费的问题。
+- **官方兜底**：作为补全，支持通过官方 ClawHub 或直接 Git 克隆完成安装。
+- **智能版本管理**：为不同技能匹配适配的分支（如 `main`/`master`），确保运行稳定性。
 
 ### 3. 配置飞书通讯枢纽 (Official Feishu Plugin)
 **场景**：需要将 OpenClaw 接入飞书，并实现文档、日历、Meego 的深度自动化。
