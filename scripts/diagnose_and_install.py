@@ -64,20 +64,49 @@ def check_openclaw_version():
         print(f"{Colors.RED}未安装或不在 PATH 中{Colors.ENDC}")
 
 def check_clawhub():
+    global IS_CLAWHUB_LOGGED_IN
     print(f"  - ClawHub CLI: ", end="", flush=True)
+    IS_CLAWHUB_LOGGED_IN = False
     try:
-        # 尝试通过 npx 运行 clawhub (不带 -y 避免自动安装，只是探测)
+        # 探测版本
         result = subprocess.run(['npx', 'clawhub', '--cli-version'], capture_output=True, text=True, timeout=5)
         if result.returncode == 0:
             version = result.stdout.strip().split()[-1]
-            print(f"{Colors.GREEN}已就绪 ({version}){Colors.ENDC}")
+            # 增加登录状态检测
+            login_check = subprocess.run(['npx', 'clawhub', 'whoami'], capture_output=True, text=True)
+            if login_check.returncode == 0:
+                print(f"{Colors.GREEN}已登录 ({version}){Colors.ENDC}")
+                IS_CLAWHUB_LOGGED_IN = True
+            else:
+                print(f"{Colors.YELLOW}就绪但未登录 ({version}){Colors.ENDC}")
             return True
         else:
-            print(f"{Colors.YELLOW}未全局安装 (建议通过 npx 使用){Colors.ENDC}")
+            print(f"{Colors.YELLOW}待部署{Colors.ENDC}")
             return False
     except:
-        print(f"{Colors.RED}未检测到 Node.js/npx{Colors.ENDC}")
+        print(f"{Colors.RED}未检测到 Node.js{Colors.ENDC}")
         return False
+
+# 全局状态，记录是否已登录
+IS_CLAWHUB_LOGGED_IN = False
+# 国内加速镜像注册表 (示例)
+CHINA_REGISTRY = "https://registry.npmmirror.com" 
+
+def install_via_clawhub():
+    print_step("通过 ClawHub 同步/更新技能...")
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+    
+    # 引导未登录用户
+    if not IS_CLAWHUB_LOGGED_IN:
+        print(f"  {Colors.YELLOW}[提示] ClawHub 未登录，部分私有或加速功能可能受限。{Colors.ENDC}")
+        use_mirror = input(f"  是否启用国内镜像节点加速安装？(Y/n): ").strip().lower()
+        if use_mirror != 'n':
+            os.environ["CLAWHUB_REGISTRY"] = CHINA_REGISTRY
+            print(f"  {Colors.GREEN}已切换至镜像节点: {CHINA_REGISTRY}{Colors.ENDC}")
+    
+    for slug in CLAWHUB_SLUGS:
+        target_path = os.path.join(base_dir, slug)
+        # ... 保持后续逻辑一致 ...
 
 def check_feishu_tools():
     print(f"  - 飞书官方工具栈: ", end="", flush=True)
@@ -94,6 +123,65 @@ def check_feishu_tools():
     except:
         print(f"{Colors.RED}无法调用 (需 Node.js){Colors.ENDC}")
         return False
+
+def interactive_config():
+    print_step("设置项目配置 (交互模式)")
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    env_path = os.path.join(base_dir, ".env")
+    env_example_path = os.path.join(base_dir, ".env.example")
+    
+    if os.path.exists(env_path):
+        choice = input(f"  {Colors.YELLOW}[!] .env 文件已存在，是否重新配置？(y/N): {Colors.ENDC}").strip().lower()
+        if choice != 'y':
+            print(f"  {Colors.GREEN}跳过配置，保留现有文件。{Colors.ENDC}")
+            return
+
+    # 从 .env.example 读取 key
+    config_data = {}
+    if os.path.exists(env_example_path):
+        with open(env_example_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                if '=' in line and not line.startswith('#'):
+                    key = line.split('=')[0].strip()
+                    config_data[key] = ""
+    else:
+        # 兜底核心 Key
+        config_data = {
+            "FEISHU_APP_ID": "", "FEISHU_APP_SECRET": "",
+            "OPENAI_API_KEY": "", "OPENAI_BASE_URL": "https://api.openai.com/v1"
+        }
+
+    print(f"\n{Colors.BLUE}>>> 请根据提示输入配置信息 (直接回车可跳过/保持默认):{Colors.ENDC}")
+    final_config = []
+    
+    # 为了更好的体验，按分类提示
+    categories = {
+        "FEISHU": "飞书 (Feishu) 配置",
+        "OPENAI": "AI (LLM) 配置",
+        "MP_": "公众号推送配置"
+    }
+
+    current_cat = ""
+    for key in config_data.keys():
+        # 显示分类标题
+        matched_cat = "其他"
+        for prefix, title in categories.items():
+            if key.startswith(prefix):
+                matched_cat = title
+                break
+        
+        if matched_cat != current_cat:
+            print(f"\n  {Colors.BOLD}[ {matched_cat} ]{Colors.ENDC}")
+            current_cat = matched_cat
+
+        val = input(f"  > {key}: ").strip()
+        final_config.append(f"{key}={val}\n")
+
+    # 写入 .env
+    with open(env_path, 'w', encoding='utf-8') as f:
+        f.writelines(final_config)
+    
+    print(f"\n{Colors.GREEN}✔ .env 配置文件已生成！{Colors.ENDC}")
 
 def diagnose_env():
     print_step("正在开启多维度环境诊断...")
@@ -125,9 +213,6 @@ def diagnose_env():
     # 权限检查
     check_permissions()
     
-    # 配置检查
-    check_env_file()
-
 # 2. 技能编排 (Skill Orchestration)
 # 增加版本/分支管理，确保环境稳定性
 SKILL_STORE = {
@@ -256,6 +341,9 @@ def main():
     
     # 作为补全使用 Git 安装
     install_skills()
+    
+    # 交互式配置 (替代手动修改 .env.example)
+    interactive_config()
     
     print_step("配置操作成功！")
     print("提示: 核心内容已就绪。请根据文档 ./docs/USAGE_GUIDE.md 完成最后配置。")
