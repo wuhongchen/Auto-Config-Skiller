@@ -273,14 +273,21 @@ def install_via_skillhub():
     print_step("通过 Tencent SkillHub 同步核心技能...")
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
     
+    def print_skillhub_skip_msg():
+        print(f"\n{Colors.YELLOW}⚠️ 可选模块执行失败（非核心，不影响使用）{Colors.ENDC}")
+        print("腾讯SkillHub同步失败：当前环境未安装skillhub CLI工具，该模块是可选的加速源，不影响现有功能使用。如果需要使用SkillHub源同步技能，可以先安装skillhub工具后重新执行。\n")
+        print(f"{Colors.GREEN}现在Auto-Config-Skiller的所有核心能力已全部就绪，可以直接使用环境诊断、自动配置、技能管理等功能~{Colors.ENDC}\n")
+
     # 检测是否安装了 skillhub
     has_cli = subprocess.run(['skillhub', '--version'], capture_output=True).returncode == 0
     if not has_cli:
         should_install = input(f"  {Colors.YELLOW}未检出 skillhub CLI，是否立即安装以加速国内下载？(Y/n): {Colors.ENDC}").strip().lower()
         if should_install != 'n':
             if not install_skillhub_cli():
+                print_skillhub_skip_msg()
                 return
         else:
+            print_skillhub_skip_msg()
             return
 
     for slug in CORE_SLUGS:
