@@ -264,9 +264,12 @@ SKILL_STORE = {
         "Self-Improving-Agent": {"url": "https://github.com/openclaw/self-improving-agent.git", "tag": "main"},
         "Find-Skills": {"url": "https://github.com/openclaw/find-skills.git", "tag": "main"},
         "Agent-Browser": {"url": "https://github.com/openclaw/agent-browser.git", "tag": "main"},
-        "Github-Skill": {"url": "https://github.com/openclaw/github.git", "tag": "main"}
+        "Github-Skill": {"url": "https://github.com/openclaw/github.git", "tag": "main"},
+        "Skill-Creator": {"url": "https://github.com/openclaw/skill-creator.git", "tag": "main"},
+        "Cron-Mastery": {"url": "https://github.com/openclaw/cron-mastery.git", "tag": "main"}
     },
-    "实用工具 (Utilities)": {
+    "实用工具与搜索 (Utilities & Search)": {
+        "Multi-Search-Engine": {"url": "https://github.com/openclaw/multi-search-engine.git", "tag": "main"},
         "Clawscan": {"url": "https://github.com/openclaw/clawscan.git", "tag": "main"},
         "IM-Master-Skills": {"url": "https://github.com/LeoYeAI/openclaw-master-skills.git", "tag": "main"},
         "Web-Search-Tavily": {"url": "https://github.com/tavily-ai/tavily-python.git", "tag": "master"}
@@ -331,7 +334,8 @@ def setup_persona():
 # 核心技能标识 (Slugs)
 CORE_SLUGS = [
     "skill-vetter", "exec-tool", "weather-skill", "claw-router", "channels-setup",
-    "self-improving-agent", "find-skills", "agent-browser", "github"
+    "self-improving-agent", "find-skills", "agent-browser", "github", 
+    "skill-creator", "cron-mastery", "multi-search-engine"
 ]
 
 def install_via_skillhub():
