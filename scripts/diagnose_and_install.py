@@ -159,6 +159,15 @@ def interactive_config():
         "MP_": "公众号推送配置"
     }
 
+    # 检查是否在交互式终端
+    if not sys.stdin.isatatty():
+        print(f"\n{Colors.YELLOW}[提示] 当前环境不支持交互式输入，已转为自动生成默认配置并创建引导。{Colors.ENDC}")
+        if os.path.exists(env_example_path):
+            shutil.copyfile(env_example_path, env_path)
+            print(f"  {Colors.GREEN}已根据 .env.example 自动生成初始 .env 文件。{Colors.ENDC}")
+            print(f"  {Colors.BLUE}请稍后手动编辑该文件完成配置：{env_path}{Colors.ENDC}")
+        return
+
     current_cat = ""
     for key in config_data.keys():
         # 显示分类标题
@@ -255,21 +264,21 @@ def diagnose_env():
 # 增加版本/分支管理，确保环境稳定性
 SKILL_STORE = {
     "核心工具 (Core Tools) - [推荐必装]": {
-        "Skill-Vetter": {"url": "https://github.com/kiwi-miwi/skill-vetter.git", "tag": "main"},
+        "Skill-Vetter": {"url": "https://github.com/openclaw/skills.git", "tag": "main"},
         "Exec-Tool": {"url": "https://github.com/openclaw/exec-tool.git", "tag": "main"},
-        "ClawRouter": {"url": "https://github.com/openclaw/claw-router.git", "tag": "main"},
+        "ClawRouter": {"url": "https://github.com/BlockRunAI/ClawRouter.git", "tag": "main"},
         "Channels-Setup": {"url": "https://github.com/openclaw/channels-setup.git", "tag": "main"}
     },
     "高级 Agent 扩展 (Advanced Agent Skills)": {
-        "Self-Improving-Agent": {"url": "https://github.com/openclaw/self-improving-agent.git", "tag": "main"},
-        "Find-Skills": {"url": "https://github.com/openclaw/find-skills.git", "tag": "main"},
-        "Agent-Browser": {"url": "https://github.com/openclaw/agent-browser.git", "tag": "main"},
-        "Github-Skill": {"url": "https://github.com/openclaw/github.git", "tag": "main"},
-        "Skill-Creator": {"url": "https://github.com/openclaw/skill-creator.git", "tag": "main"},
-        "Cron-Mastery": {"url": "https://github.com/openclaw/cron-mastery.git", "tag": "main"}
+        "Self-Improving-Agent": {"url": "https://github.com/openclaw/skills.git", "tag": "main"},
+        "Find-Skills": {"url": "https://github.com/VoltAgent/awesome-openclaw-skills.git", "tag": "main"},
+        "Agent-Browser": {"url": "https://github.com/openclaw/openclaw.git", "tag": "main"},
+        "Github-Skill": {"url": "https://github.com/openclaw/openclaw.git", "tag": "main"},
+        "Skill-Creator": {"url": "https://github.com/openclaw/skills.git", "tag": "main"},
+        "Cron-Mastery": {"url": "https://github.com/openclaw/skills.git", "tag": "main"}
     },
     "实用工具与搜索 (Utilities & Search)": {
-        "Multi-Search-Engine": {"url": "https://github.com/openclaw/multi-search-engine.git", "tag": "main"},
+        "Multi-Search-Engine": {"url": "https://github.com/openclaw/skills.git", "tag": "main"},
         "Clawscan": {"url": "https://github.com/openclaw/clawscan.git", "tag": "main"},
         "IM-Master-Skills": {"url": "https://github.com/LeoYeAI/openclaw-master-skills.git", "tag": "main"},
         "Web-Search-Tavily": {"url": "https://github.com/tavily-ai/tavily-python.git", "tag": "master"}
