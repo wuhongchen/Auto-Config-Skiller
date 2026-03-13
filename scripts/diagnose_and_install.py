@@ -267,7 +267,7 @@ SKILL_STORE = {
 }
 
 # 核心技能标识 (Slugs)
-CORE_SLUGS = ["skill-vetter", "exec-tool", "weather-skill", "claw-router"]
+CORE_SLUGS = ["skill-vetter", "exec-tool", "weather-skill", "claw-router", "channels-setup"]
 
 def install_via_skillhub():
     print_step("通过 Tencent SkillHub 同步核心技能...")
