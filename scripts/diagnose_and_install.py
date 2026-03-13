@@ -170,13 +170,24 @@ CLAWHUB_SLUGS = [
 ]
 
 def install_via_clawhub():
-    print_step("尝试通过 ClawHub 安装核心技能...")
+    print_step("通过 ClawHub 同步/更新核心技能...")
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
     
     for slug in CLAWHUB_SLUGS:
         target_path = os.path.join(base_dir, slug)
+        
         if os.path.exists(target_path):
-            print(f"  [已存在] {slug} - 跳过")
+            print(f"  [已存在] {slug} - 正在同步更新 ... ", end="", flush=True)
+            # 对于 ClawHub，我们可以调用 update 命令
+            try:
+                result = subprocess.run(['npx', '-y', 'clawhub@latest', 'update', slug, '--no-input', '--dir', base_dir], 
+                                     capture_output=True, text=True)
+                if result.returncode == 0:
+                    print(f"{Colors.GREEN}已是最新{Colors.ENDC}")
+                else:
+                    print(f"{Colors.YELLOW}跳过更新 (可能需登录){Colors.ENDC}")
+            except:
+                print(f"{Colors.YELLOW}失败{Colors.ENDC}")
             continue
             
         print(f"  [ClawHub] 正在安装 {slug} ... ", end="", flush=True)
@@ -191,7 +202,7 @@ def install_via_clawhub():
             print(f"{Colors.RED}异常: {str(e)}{Colors.ENDC}")
 
 def install_skills():
-    print_step("开始基础安装包编排 (Git Clone 备选)...")
+    print_step("同步基础安装包 (Git Pull/Clone)...")
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
     
     for category, skills in SKILL_STORE.items():
@@ -202,7 +213,17 @@ def install_skills():
             tag = config.get("tag", "main")
             
             if os.path.exists(target_path):
-                print(f"  [已存在] {name} - 跳过")
+                print(f"  [已存在] {name} - 正在拉取更新 ... ", end="", flush=True)
+                try:
+                    # 进入目录执行 git pull
+                    result = subprocess.run(['git', '-C', target_path, 'pull', 'origin', tag], 
+                                         capture_output=True, text=True)
+                    if result.returncode == 0:
+                        print(f"{Colors.GREEN}已更新{Colors.ENDC}")
+                    else:
+                        print(f"{Colors.YELLOW}更新失败 (本地可能有改动){Colors.ENDC}")
+                except Exception as e:
+                    print(f"{Colors.RED}异常: {str(e)}{Colors.ENDC}")
             else:
                 print(f"  [Git 克隆] {name} (适配分支: {tag}) ... ", end="", flush=True)
                 try:
