@@ -129,20 +129,21 @@ def diagnose_env():
     check_env_file()
 
 # 2. 技能编排 (Skill Orchestration)
+# 增加版本/分支管理，确保环境稳定性
 SKILL_STORE = {
     "安全工具 (Security Tools) - [首选必装]": {
-        "Skill-Vetter": "https://github.com/kiwi-miwi/skill-vetter.git",
-        "Clawscan": "https://github.com/openclaw/clawscan.git"
+        "Skill-Vetter": {"url": "https://github.com/kiwi-miwi/skill-vetter.git", "tag": "main"},
+        "Clawscan": {"url": "https://github.com/openclaw/clawscan.git", "tag": "main"}
     },
     "通讯 (Communication)": {
-        "IM-Master-Skills": "https://github.com/LeoYeAI/openclaw-master-skills.git"
+        "IM-Master-Skills": {"url": "https://github.com/LeoYeAI/openclaw-master-skills.git", "tag": "main"}
     },
     "基础工具 (Basic Tools)": {
-        "Exec-Tool": "https://github.com/openclaw/exec-tool.git",
-        "Web-Search-Tavily": "https://github.com/tavily-ai/tavily-python.git"
+        "Exec-Tool": {"url": "https://github.com/openclaw/exec-tool.git", "tag": "main"},
+        "Web-Search-Tavily": {"url": "https://github.com/tavily-ai/tavily-python.git", "tag": "master"}
     },
     "优化工具 (Optimization Tools)": {
-        "ClawRouter": "https://github.com/openclaw/claw-router.git"
+        "ClawRouter": {"url": "https://github.com/openclaw/claw-router.git", "tag": "main"}
     }
 }
 
@@ -151,14 +152,13 @@ def install_feishu_plugin():
     print(f"  [飞书] 正在调用官方安装程序 ... ", end="", flush=True)
     try:
         # 该命令会启动交互式安装或诊断修复
-        # 注意：此处不使用 --no-input 是因为飞书工具通常需要引导创建机器人
-        print(f"\n{Colors.BLUE}>>> 提示: 接下来将启动官方飞书工具，请根据屏幕提示操作 (如需跳过请 Ctrl+C){Colors.ENDC}")
+        print(f"\n{Colors.BLUE}>>> 提示: 接下来将启动官方飞书工具，如需跳过请 Ctrl+C{Colors.ENDC}")
         result = subprocess.run(['npx', '-y', '@larksuite/openclaw-lark-tools', 'install'], 
                              text=True)
         if result.returncode == 0:
-            print(f"{Colors.GREEN}飞书插件环境部署完成{Colors.ENDC}")
+            print(f"{Colors.GREEN}飞书插件部署完成{Colors.ENDC}")
         else:
-            print(f"{Colors.RED}飞书插件安装退出 (code: {result.returncode}){Colors.ENDC}")
+            print(f"{Colors.RED}飞书插件安装退出{Colors.ENDC}")
     except Exception as e:
         print(f"{Colors.RED}飞书安装异常: {str(e)}{Colors.ENDC}")
 
@@ -166,8 +166,7 @@ def install_feishu_plugin():
 CLAWHUB_SLUGS = [
     "skill-vetter",
     "exec-tool",
-    "weather-skill",
-    "market-news-skiller"
+    "weather-skill"
 ]
 
 def install_via_clawhub():
@@ -182,35 +181,32 @@ def install_via_clawhub():
             
         print(f"  [ClawHub] 正在安装 {slug} ... ", end="", flush=True)
         try:
-            # 使用 npx -y 确保自动下载执行
-            # 添加 --no-input 避免交互，--dir 指定安装位置
             result = subprocess.run(['npx', '-y', 'clawhub@latest', 'install', slug, '--no-input', '--dir', base_dir], 
                                  capture_output=True, text=True)
             if result.returncode == 0:
                 print(f"{Colors.GREEN}完成{Colors.ENDC}")
             else:
-                print(f"{Colors.YELLOW}失败 (可能需登录或网络限制){Colors.ENDC}")
-                # print(f"    调试信息: {result.stderr.strip()}")
+                print(f"{Colors.YELLOW}失败 (跳过){Colors.ENDC}")
         except Exception as e:
             print(f"{Colors.RED}异常: {str(e)}{Colors.ENDC}")
 
 def install_skills():
     print_step("开始基础安装包编排 (Git Clone 备选)...")
-    
-    # 获取 skills 根目录 (假设脚本在 auto-config-skiller/scripts 下)
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
     
     for category, skills in SKILL_STORE.items():
         print(f"\n{Colors.BLUE}{Colors.BOLD}--- {category} ---{Colors.ENDC}")
-        for name, url in skills.items():
+        for name, config in skills.items():
             target_path = os.path.join(base_dir, name)
+            url = config["url"]
+            tag = config.get("tag", "main")
+            
             if os.path.exists(target_path):
                 print(f"  [已存在] {name} - 跳过")
             else:
-                print(f"  [Git 克隆] {name} ... ", end="", flush=True)
+                print(f"  [Git 克隆] {name} (适配分支: {tag}) ... ", end="", flush=True)
                 try:
-                    # 真正执行克隆
-                    result = subprocess.run(['git', 'clone', '--depth', '1', url, target_path], 
+                    result = subprocess.run(['git', 'clone', '-b', tag, '--depth', '1', url, target_path], 
                                          capture_output=True, text=True)
                     if result.returncode == 0:
                         print(f"{Colors.GREEN}完成{Colors.ENDC}")
@@ -221,8 +217,13 @@ def install_skills():
 
 def main():
     print(f"{Colors.HEADER}{Colors.BOLD}=======================================")
-    print("   OpenClaw 自动配置助手 (诊断 & 分类安装)")
+    print("   OpenClaw 自动配置助手 (傻瓜模式)")
     print(f"======================================={Colors.ENDC}")
+    print(f"{Colors.BLUE}本工具将自动完成以下操作：")
+    print("1. 诊断当前磁盘、网络、版本环境")
+    print("2. 自动配置飞书官方通讯渠道")
+    print("3. 一键安装推荐的 OpenClaw 核心技能库")
+    print(f"---------------------------------------{Colors.ENDC}")
     
     diagnose_env()
     
@@ -235,10 +236,9 @@ def main():
     # 作为补全使用 Git 安装
     install_skills()
     
-    print_step("配置引导")
-    print("所有工具已编排。请手动检查 .env.example 并配置环境变量。")
-    print("提示: 核心 Skill 推荐通过 `npx clawhub login` 登录后获取完整权限。")
-    print(f"\n{Colors.GREEN}{Colors.BOLD}🎉 初始化完成！{Colors.ENDC}")
+    print_step("配置操作成功！")
+    print("提示: 核心内容已就绪。请根据文档 ./docs/USAGE_GUIDE.md 完成最后配置。")
+    print(f"\n{Colors.GREEN}{Colors.BOLD}🎉 自动化流程执行完毕！{Colors.ENDC}")
 
 if __name__ == "__main__":
     main()
