@@ -186,14 +186,18 @@ def interactive_config():
 def check_skillhub():
     print(f"  - Tencent SkillHub: ", end="", flush=True)
     try:
-        # 探测 skillhub 命令
-        result = subprocess.run(['skillhub', '--version'], capture_output=True, text=True, timeout=5)
-        if result.returncode == 0:
-            print(f"{Colors.GREEN}已就绪{Colors.ENDC}")
-            return True
-        else:
-            print(f"{Colors.YELLOW}未发现{Colors.ENDC}")
-            return False
+        # 1. 优先尝试 PATH 中的命令
+        # 2. 兜底尝试用户本地常用安装路径
+        common_paths = ['skillhub', os.path.expanduser('~/.local/bin/skillhub')]
+        
+        for path in common_paths:
+            result = subprocess.run([path, '--version'], capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                print(f"{Colors.GREEN}已就绪{Colors.ENDC}")
+                return True
+        
+        print(f"{Colors.YELLOW}未发现{Colors.ENDC}")
+        return False
     except:
         print(f"{Colors.YELLOW}未检出{Colors.ENDC}")
         return False
@@ -331,19 +335,31 @@ def install_via_skillhub():
     print_step("通过 Tencent SkillHub 同步核心技能...")
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
     
+    # 路径搜寻逻辑
+    skillhub_path = 'skillhub'
+    potential_paths = ['skillhub', os.path.expanduser('~/.local/bin/skillhub')]
+    
+    has_cli = False
+    for p in potential_paths:
+        if subprocess.run([p, '--version'], capture_output=True).returncode == 0:
+            skillhub_path = p
+            has_cli = True
+            break
+
     def print_skillhub_skip_msg():
         print(f"\n{Colors.YELLOW}⚠️ 可选模块执行失败（非核心，不影响使用）{Colors.ENDC}")
         print("腾讯SkillHub同步失败：当前环境未安装skillhub CLI工具，该模块是可选的加速源，不影响现有功能使用。如果需要使用SkillHub源同步技能，可以先安装skillhub工具后重新执行。\n")
         print(f"{Colors.GREEN}现在Auto-Config-Skiller的所有核心能力已全部就绪，可以直接使用环境诊断、自动配置、技能管理等功能~{Colors.ENDC}\n")
 
-    # 检测是否安装了 skillhub
-    has_cli = subprocess.run(['skillhub', '--version'], capture_output=True).returncode == 0
     if not has_cli:
         should_install = input(f"  {Colors.YELLOW}未检出 skillhub CLI，是否立即安装以加速国内下载？(Y/n): {Colors.ENDC}").strip().lower()
         if should_install != 'n':
             if not install_skillhub_cli():
                 print_skillhub_skip_msg()
                 return
+            else:
+                # 安装成功后再次确定路径
+                skillhub_path = os.path.expanduser('~/.local/bin/skillhub')
         else:
             print_skillhub_skip_msg()
             return
@@ -356,7 +372,7 @@ def install_via_skillhub():
             
         print(f"  [SkillHub] 正在安装 {slug} ... ", end="", flush=True)
         try:
-            result = subprocess.run(['skillhub', 'install', slug, '--dir', base_dir], 
+            result = subprocess.run([skillhub_path, 'install', slug, '--dir', base_dir], 
                                  capture_output=True, text=True)
             if result.returncode == 0:
                 print(f"{Colors.GREEN}完成{Colors.ENDC}")
