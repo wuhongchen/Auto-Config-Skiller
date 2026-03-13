@@ -22,6 +22,9 @@ def print_success(msg):
 def print_error(msg):
     print(f"{Colors.RED}✘ {msg}{Colors.ENDC}")
 
+# 国内 GitHub 加速代理
+GITHUB_PROXY = "https://ghfast.top/"
+
 # 1. 环境诊断 (Environment Diagnosis)
 def check_network(host="github.com"):
     print(f"  - 网络连通性 ({host}): ", end="", flush=True)
@@ -467,8 +470,11 @@ def install_skills():
             if os.path.exists(target_path):
                 print(f"  [已存在] {name} - 正在拉取更新 ... ", end="", flush=True)
                 try:
+                    # 禁用交互式提示，避免卡在身份验证
+                    env = os.environ.copy()
+                    env["GIT_TERMINAL_PROMPT"] = "0"
                     result = subprocess.run(['git', '-C', target_path, 'pull', 'origin', tag], 
-                                         capture_output=True, text=True)
+                                         capture_output=True, text=True, env=env)
                     if result.returncode == 0:
                         print(f"{Colors.GREEN}已更新{Colors.ENDC}")
                     else:
@@ -476,14 +482,33 @@ def install_skills():
                 except:
                     print(f"{Colors.YELLOW}异常{Colors.ENDC}")
             else:
-                print(f"  [Git 克隆] {name} (适配分支: {tag}) ... ", end="", flush=True)
+                print(f"  [Git 克隆] {name} ... ", end="", flush=True)
+                
+                # 禁用交互式提示
+                git_env = os.environ.copy()
+                git_env["GIT_TERMINAL_PROMPT"] = "0"
+                
                 try:
+                    # 第一轮：尝试原始地址
                     result = subprocess.run(['git', 'clone', '-b', tag, '--depth', '1', url, target_path], 
-                                         capture_output=True, text=True)
+                                         capture_output=True, text=True, env=git_env)
+                    
                     if result.returncode == 0:
                         print(f"{Colors.GREEN}完成{Colors.ENDC}")
                     else:
-                        print(f"{Colors.RED}失败{Colors.ENDC}")
+                        # 第二轮：尝试使用代理加速 (解决身份验证或网络拦截问题)
+                        print(f"{Colors.YELLOW}重试(代理)... {Colors.ENDC}", end="", flush=True)
+                        proxy_url = f"{GITHUB_PROXY}{url}"
+                        result_proxy = subprocess.run(['git', 'clone', '-b', tag, '--depth', '1', proxy_url, target_path], 
+                                                   capture_output=True, text=True, env=git_env)
+                        
+                        if result_proxy.returncode == 0:
+                            print(f"{Colors.GREEN}代理同步成功{Colors.ENDC}")
+                        else:
+                            print(f"{Colors.RED}彻底失败{Colors.ENDC}")
+                            # 打印错误原因辅助排查
+                            if "Authentication failed" in result_proxy.stderr:
+                                print(f"    {Colors.RED}原因: 该仓库可能需要私有权限或 Token{Colors.ENDC}")
                 except Exception as e:
                     print(f"{Colors.RED}异常: {str(e)}{Colors.ENDC}")
 
