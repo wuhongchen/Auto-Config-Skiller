@@ -551,9 +551,11 @@ def setup_persona():
 
     print(f"  正在下载默认人设: {selected_name} ... ", end="", flush=True)
 
-    raw_url = (
+    urls_to_try = [
+        f"https://ghfast.top/https://raw.githubusercontent.com/msitarzewski/agency-agents/main/{selected_path}",
+        f"https://ghproxy.net/https://raw.githubusercontent.com/msitarzewski/agency-agents/main/{selected_path}",
         f"https://raw.githubusercontent.com/msitarzewski/agency-agents/main/{selected_path}"
-    )
+    ]
     base_dir    = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
     persona_path = os.path.join(base_dir, "persona.md")
 
@@ -561,18 +563,28 @@ def setup_persona():
     ctx.check_hostname = False
     ctx.verify_mode    = ssl.CERT_NONE
 
-    try:
-        req = urllib.request.Request(raw_url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, context=ctx, timeout=15) as response:
-            content = response.read().decode('utf-8')
+    success = False
+    last_err = None
+    for raw_url in urls_to_try:
+        try:
+            req = urllib.request.Request(raw_url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, context=ctx, timeout=10) as response:
+                content = response.read().decode('utf-8')
 
-        with open(persona_path, 'w', encoding='utf-8') as f:
-            f.write(content)
+            with open(persona_path, 'w', encoding='utf-8') as f:
+                f.write(content)
 
+            success = True
+            break
+        except Exception as e:
+            last_err = e
+            continue
+
+    if success:
         print(f"{Colors.GREEN}成功{Colors.ENDC}")
         print(f"  {Colors.YELLOW}默认人设已保存至: {persona_path}，您随时可以手动修改。{Colors.ENDC}")
-    except Exception as e:
-        print(f"{Colors.RED}获取默认人设失败: {e}{Colors.ENDC}")
+    else:
+        print(f"{Colors.RED}获取默认人设失败（所有镜像节点皆已超时）: {last_err}{Colors.ENDC}")
 
 # ============================================================
 # 主入口
