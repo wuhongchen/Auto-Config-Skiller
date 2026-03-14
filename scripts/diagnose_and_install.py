@@ -129,15 +129,6 @@ def check_permissions():
     else:
         print(f"{Colors.RED}拒绝 (请检查文件夹权限){Colors.ENDC}")
 
-def check_env_file():
-    print(f"  - .env 配置文件: ", end="", flush=True)
-    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    env_path = os.path.join(base_dir, ".env")
-    if os.path.exists(env_path):
-        print(f"{Colors.GREEN}已发现{Colors.ENDC}")
-    else:
-        print(f"{Colors.YELLOW}未配置 (需根据 .env.example 创建){Colors.ENDC}")
-
 def check_openclaw_version():
     print(f"  - OpenClaw 版本: ", end="", flush=True)
     try:
@@ -233,9 +224,6 @@ def diagnose_env():
     # OpenClaw 版本检查
     check_openclaw_version()
 
-    # .env 文件检查（之前遗漏）
-    check_env_file()
-
     # 飞书工具检查
     check_feishu_tools()
 
@@ -315,10 +303,10 @@ def install_feishu_plugin():
     print_step("初始化飞书官方通讯插件...")
 
     try:
-        result = subprocess.run(
-            ['npx', '-y', '@larksuite/openclaw-lark-tools', 'install'],
-            text=True
-        )
+        # 使用 yes | 管道，自动确认安装过程中的所有提示 (y/Y)，彻底解决手动确认阻塞。
+        # 增加 @latest 确保不论何种情况都拉取/升级到官方最新版本
+        install_cmd = "yes | npx -y @larksuite/openclaw-lark-tools@latest install"
+        result = subprocess.run(install_cmd, shell=True, text=True)
         if result.returncode == 0:
             print_success("飞书插件部署完成")
             # 安装成功后自动执行流式配置
@@ -411,7 +399,8 @@ def install_via_skillhub():
                 if "not found" in stderr_lower or "404" in stderr_lower:
                     print(f"{Colors.YELLOW}SkillHub 未收录此技能，将由 Git 补全{Colors.ENDC}")
                 else:
-                    print(f"{Colors.YELLOW}失败（将由 Git 补全）: {(result.stderr or '').strip()[:80]}{Colors.ENDC}")
+                    err_msg = str(result.stderr or "").strip()
+                    print(f"{Colors.YELLOW}失败（将由 Git 补全）: {err_msg[:80]}{Colors.ENDC}")
         except subprocess.TimeoutExpired:
             print(f"{Colors.YELLOW}超时，将由 Git 补全{Colors.ENDC}")
         except Exception as e:
@@ -504,7 +493,8 @@ def install_skills():
                     if result.returncode == 0:
                         print(f"{Colors.GREEN}已更新{Colors.ENDC}")
                     else:
-                        print(f"{Colors.YELLOW}更新失败 (跳过): {(result.stderr or '').strip()[:60]}{Colors.ENDC}")
+                        err_msg = str(result.stderr or "").strip()
+                        print(f"{Colors.YELLOW}更新失败 (跳过): {err_msg[:60]}{Colors.ENDC}")
                 except subprocess.TimeoutExpired:
                     print(f"{Colors.YELLOW}超时，跳过{Colors.ENDC}")
                 except Exception as e:
@@ -541,7 +531,8 @@ def install_skills():
                             elif "not found" in stderr.lower() or "does not exist" in stderr.lower():
                                 print(f"    {Colors.RED}原因: 仓库不存在或 URL 有误{Colors.ENDC}")
                             else:
-                                print(f"    {Colors.RED}详情: {(stderr or '').strip()[:120]}{Colors.ENDC}")
+                                err_msg = str(stderr or "").strip()
+                                print(f"    {Colors.RED}详情: {err_msg[:120]}{Colors.ENDC}")
 
                 except subprocess.TimeoutExpired:
                     print(f"{Colors.RED}超时{Colors.ENDC}")
@@ -549,34 +540,7 @@ def install_skills():
                     print(f"{Colors.RED}克隆异常: {str(e)}{Colors.ENDC}")
 
 # ============================================================
-# 7. 环境配置模板生成
-# ============================================================
-def setup_env_template():
-    """依据 OpenClaw 准则，不再阻塞等待输入，而是生成配置模板引导用户手动配置"""
-    print_step("生成环境配置模板 (.env)")
-    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    env_path         = os.path.join(base_dir, ".env")
-    env_example_path = os.path.join(base_dir, ".env.example")
-
-    if os.path.exists(env_path):
-        print(f"  {Colors.GREEN}.env 文件已存在，保留现有配置。{Colors.ENDC}")
-        return
-
-    if os.path.exists(env_example_path):
-        try:
-            shutil.copyfile(env_example_path, env_path)
-            print_success(f"已根据 .env.example 自动生成初始 .env 文件。")
-            print(f"\n{Colors.YELLOW}{Colors.BOLD}======================================================{Colors.ENDC}")
-            print(f"{Colors.YELLOW}{Colors.BOLD}⚠️  重要提示：需手动配置环境变量{Colors.ENDC}")
-            print(f"{Colors.YELLOW}{Colors.BOLD}请打开文件 {env_path} 并填入您的 API Key 和 飞书密钥。{Colors.ENDC}")
-            print(f"{Colors.YELLOW}{Colors.BOLD}======================================================{Colors.ENDC}\n")
-        except Exception as e:
-            print_error(f"复制配置文件失败: {e}")
-    else:
-        print_warn(".env.example 不存在，请手动创建 .env 文件并填入所需变量。")
-
-# ============================================================
-# 8. AI 人设配置
+# 7. AI 人设配置
 # ============================================================
 def setup_persona():
     """静默为其配备默认的高分人设，不再阻塞询问"""
@@ -624,9 +588,9 @@ def main():
     print(f"======================================={Colors.ENDC}")
 
     print(f"{Colors.BLUE}本工具将自动完成以下操作：")
-    print("1. 诊断环境、静默部署飞书通道")
+    print("1. 诊断环境、并静默部署飞书通道 (自动同意所有验证)")
     print("2. 智能感知网络环境并选择最优技能同步源 (GitHub 官方 / SkillHub 国内加速)")
-    print("3. 全量编排核心技能库，生成 .env 模板并下发系统人设")
+    print("3. 全量编排核心技能库并下发系统人设 (依标遵守 OpenClaw 中心化配置原则)")
     print("注意：遵循 OpenClaw 准则，本脚本不包含任何阻塞交互动作。")
     print(f"---------------------------------------{Colors.ENDC}")
 
@@ -655,10 +619,7 @@ def main():
         install_via_clawhub()
         install_skills()
 
-    # 4. 环境配置模板生成
-    setup_env_template()
-
-    # 5. 引导内置人设
+    # 4. 引导内置人设
     setup_persona()
 
     print_step("配置任务完成！")
