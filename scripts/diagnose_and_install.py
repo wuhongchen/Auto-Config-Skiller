@@ -6,6 +6,7 @@ import argparse
 import urllib.request
 import ssl
 import json
+import select
 
 # ============================================================
 # 颜色常量
@@ -30,6 +31,16 @@ def print_warn(msg):
 
 def print_error(msg):
     print(f"{Colors.RED}✘ {msg}{Colors.ENDC}")
+
+def prompt_with_timeout(prompt, timeout=60):
+    """带超时的终端输入，超时自动抛出异常跳过"""
+    print(prompt, end="", flush=True)
+    ready, _, _ = select.select([sys.stdin], [], [], timeout)
+    if ready:
+        return sys.stdin.readline().strip()
+    else:
+        print(f"\n{Colors.YELLOW}[!] 输入等待超时 ({timeout}秒)，自动跳过 当前步骤。{Colors.ENDC}")
+        raise TimeoutError("Input timeout")
 
 # ============================================================
 # 国内 GitHub 加速代理
@@ -82,18 +93,11 @@ SKILLHUB_SLUGS = [
 # 技能仓库（Git 克隆备选源）
 # ============================================================
 # 每个条目对应一个独立仓库，确保克隆目标是有效的单一技能仓库
+# 注：已移除失效 (404) 的仓库：exec-tool, channels-setup, Clawscan
 SKILL_STORE = {
     "核心工具 (Core Tools) - [推荐必装]": {
-        "exec-tool": {
-            "url": "https://github.com/openclaw/exec-tool.git",
-            "tag": "main"
-        },
         "ClawRouter": {
             "url": "https://github.com/BlockRunAI/ClawRouter.git",
-            "tag": "main"
-        },
-        "channels-setup": {
-            "url": "https://github.com/openclaw/channels-setup.git",
             "tag": "main"
         },
     },
@@ -104,10 +108,6 @@ SKILL_STORE = {
         },
     },
     "实用工具与搜索 (Utilities & Search)": {
-        "Clawscan": {
-            "url": "https://github.com/openclaw/clawscan.git",
-            "tag": "main"
-        },
         "IM-Master-Skills": {
             "url": "https://github.com/LeoYeAI/openclaw-master-skills.git",
             "tag": "main"
@@ -438,7 +438,7 @@ def install_via_skillhub():
                 if "not found" in stderr_lower or "404" in stderr_lower:
                     print(f"{Colors.YELLOW}SkillHub 未收录此技能，将由 Git 补全{Colors.ENDC}")
                 else:
-                    print(f"{Colors.YELLOW}失败（将由 Git 补全）: {result.stderr.strip()[:80]}{Colors.ENDC}")
+                    print(f"{Colors.YELLOW}失败（将由 Git 补全）: {(result.stderr or '').strip()[:80]}{Colors.ENDC}")
         except subprocess.TimeoutExpired:
             print(f"{Colors.YELLOW}超时，将由 Git 补全{Colors.ENDC}")
         except Exception as e:
@@ -531,7 +531,7 @@ def install_skills():
                     if result.returncode == 0:
                         print(f"{Colors.GREEN}已更新{Colors.ENDC}")
                     else:
-                        print(f"{Colors.YELLOW}更新失败 (跳过): {result.stderr.strip()[:60]}{Colors.ENDC}")
+                        print(f"{Colors.YELLOW}更新失败 (跳过): {(result.stderr or '').strip()[:60]}{Colors.ENDC}")
                 except subprocess.TimeoutExpired:
                     print(f"{Colors.YELLOW}超时，跳过{Colors.ENDC}")
                 except Exception as e:
@@ -568,7 +568,7 @@ def install_skills():
                             elif "not found" in stderr.lower() or "does not exist" in stderr.lower():
                                 print(f"    {Colors.RED}原因: 仓库不存在或 URL 有误{Colors.ENDC}")
                             else:
-                                print(f"    {Colors.RED}详情: {stderr.strip()[:120]}{Colors.ENDC}")
+                                print(f"    {Colors.RED}详情: {(stderr or '').strip()[:120]}{Colors.ENDC}")
 
                 except subprocess.TimeoutExpired:
                     print(f"{Colors.RED}超时{Colors.ENDC}")
@@ -606,11 +606,12 @@ def interactive_config():
     print(f"  （交互模式）")
     if os.path.exists(env_path):
         try:
-            choice = input(
-                f"  {Colors.YELLOW}[!] .env 文件已存在，是否重新配置？(y/N): {Colors.ENDC}"
-            ).strip().lower()
-        except EOFError:
-            print_warn("输入流已关闭，跳过配置。")
+            choice = prompt_with_timeout(
+                f"  {Colors.YELLOW}[!] .env 文件已存在，是否重新配置？(y/N) [60秒超时]: {Colors.ENDC}", 
+                timeout=60
+            ).lower()
+        except (EOFError, TimeoutError):
+            print_warn("输入流已关闭或超时，跳过配置。")
             return
         if choice != 'y':
             print(f"  {Colors.GREEN}跳过配置，保留现有文件。{Colors.ENDC}")
@@ -651,9 +652,9 @@ def interactive_config():
             current_cat = matched_cat
 
         try:
-            val = input(f"  > {key}: ").strip()
-        except EOFError:
-            print_warn("输入流已关闭，中止配置。")
+            val = prompt_with_timeout(f"  > {key} [60秒自动跳过]: ", timeout=60)
+        except (EOFError, TimeoutError):
+            print_warn("输入流已关闭或超时，中止当前配置，保留已填项。")
             break
         final_config.append(f"{key}={val}\n")
 
@@ -691,11 +692,12 @@ def setup_persona():
         return
 
     try:
-        choice = input(
-            f"\n{Colors.YELLOW}请选择一个内置人设 (1-{len(personas)}): {Colors.ENDC}"
-        ).strip()
-    except EOFError:
-        print_warn("输入流已关闭，跳过人设配置。")
+        choice = prompt_with_timeout(
+            f"\n{Colors.YELLOW}请选择一个内置人设 (1-{len(personas)}) [60秒自动跳过]: {Colors.ENDC}",
+            timeout=60
+        )
+    except (EOFError, TimeoutError):
+        print_warn("输入流已关闭或超时，跳过人设配置。")
         return
 
     try:
