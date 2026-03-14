@@ -6,7 +6,6 @@ import argparse
 import urllib.request
 import ssl
 import json
-import select
 
 # ============================================================
 # 颜色常量
@@ -32,16 +31,6 @@ def print_warn(msg):
 def print_error(msg):
     print(f"{Colors.RED}✘ {msg}{Colors.ENDC}")
 
-def prompt_with_timeout(prompt, timeout=60):
-    """带超时的终端输入，超时自动抛出异常跳过"""
-    print(prompt, end="", flush=True)
-    ready, _, _ = select.select([sys.stdin], [], [], timeout)
-    if ready:
-        return sys.stdin.readline().strip()
-    else:
-        print(f"\n{Colors.YELLOW}[!] 输入等待超时 ({timeout}秒)，自动跳过 当前步骤。{Colors.ENDC}")
-        raise TimeoutError("Input timeout")
-
 # ============================================================
 # 国内 GitHub 加速代理
 # ============================================================
@@ -51,7 +40,6 @@ GITHUB_PROXY = "https://ghfast.top/"
 # 全局状态
 # ============================================================
 IS_CLAWHUB_LOGGED_IN = False
-IS_NON_INTERACTIVE   = False
 IS_GITHUB_ACCESSIBLE = True
 
 # 国内 npm 加速镜像
@@ -322,23 +310,10 @@ def configure_feishu_streaming():
 def install_feishu_plugin():
     """
     初始化飞书官方通讯插件。
-
-    修复：
-    - 非交互模式或非 TTY 时直接跳过，不再调用任何交互式子进程，
-      彻底规避 ERR_USE_AFTER_CLOSE 的 readline 关闭问题。
-    - 仅在真正的交互式终端中才启动官方工具。
+    完全遵循 OpenClaw 静默安装准则，直接非交互式安装。
     """
     print_step("初始化飞书官方通讯插件...")
 
-    # 判断是否应跳过交互
-    is_interactive_env = sys.stdin.isatty() and sys.stdout.isatty()
-
-    if IS_NON_INTERACTIVE or not is_interactive_env:
-        print_warn("检测到非交互式环境（或已启用 --non-interactive），跳过飞书插件交互式安装。")
-        print(f"  {Colors.BLUE}如需安装，请手动执行: npx -y @larksuite/openclaw-lark-tools install{Colors.ENDC}")
-        return
-
-    print(f"\n{Colors.BLUE}>>> 提示: 接下来将启动官方飞书工具，如需跳过请 Ctrl+C{Colors.ENDC}")
     try:
         result = subprocess.run(
             ['npx', '-y', '@larksuite/openclaw-lark-tools', 'install'],
@@ -350,8 +325,6 @@ def install_feishu_plugin():
             configure_feishu_streaming()
         else:
             print_error(f"飞书插件安装退出 (返回码: {result.returncode})")
-    except KeyboardInterrupt:
-        print(f"\n{Colors.YELLOW}已取消飞书插件安装。{Colors.ENDC}")
     except Exception as e:
         print_error(f"飞书安装异常: {str(e)}")
 
@@ -576,150 +549,55 @@ def install_skills():
                     print(f"{Colors.RED}克隆异常: {str(e)}{Colors.ENDC}")
 
 # ============================================================
-# 7. 交互式配置
+# 7. 环境配置模板生成
 # ============================================================
-def interactive_config():
-    print_step("设置项目配置")
+def setup_env_template():
+    """依据 OpenClaw 准则，不再阻塞等待输入，而是生成配置模板引导用户手动配置"""
+    print_step("生成环境配置模板 (.env)")
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     env_path         = os.path.join(base_dir, ".env")
     env_example_path = os.path.join(base_dir, ".env.example")
 
-    # 修复：使用正确的 sys.stdin.isatty()（原代码错误地使用了 isatatty）
-    is_interactive_env = sys.stdin.isatty() and sys.stdout.isatty()
-
-    if IS_NON_INTERACTIVE or not is_interactive_env:
-        print_warn("当前环境不支持交互式输入或已启用 --non-interactive，已转为自动生成默认配置。")
-        if os.path.exists(env_path):
-            print(f"  {Colors.GREEN}.env 文件已存在，保留现有配置。{Colors.ENDC}")
-        elif os.path.exists(env_example_path):
-            try:
-                shutil.copyfile(env_example_path, env_path)
-                print_success(f"已根据 .env.example 自动生成初始 .env 文件。")
-                print(f"  {Colors.BLUE}请手动编辑: {env_path}{Colors.ENDC}")
-            except Exception as e:
-                print_error(f"复制配置文件失败: {e}")
-        else:
-            print_warn(".env.example 也不存在，请手动创建 .env 文件。")
+    if os.path.exists(env_path):
+        print(f"  {Colors.GREEN}.env 文件已存在，保留现有配置。{Colors.ENDC}")
         return
 
-    # 交互模式
-    print(f"  （交互模式）")
-    if os.path.exists(env_path):
-        try:
-            choice = prompt_with_timeout(
-                f"  {Colors.YELLOW}[!] .env 文件已存在，是否重新配置？(y/N) [60秒超时]: {Colors.ENDC}", 
-                timeout=60
-            ).lower()
-        except (EOFError, TimeoutError):
-            print_warn("输入流已关闭或超时，跳过配置。")
-            return
-        if choice != 'y':
-            print(f"  {Colors.GREEN}跳过配置，保留现有文件。{Colors.ENDC}")
-            return
-
-    # 从 .env.example 读取 key
-    config_data = {}
     if os.path.exists(env_example_path):
-        with open(env_example_path, 'r', encoding='utf-8') as f:
-            for line in f:
-                if '=' in line and not line.startswith('#'):
-                    key = line.split('=')[0].strip()
-                    config_data[key] = ""
-    else:
-        config_data = {
-            "FEISHU_APP_ID": "", "FEISHU_APP_SECRET": "",
-            "OPENAI_API_KEY": "", "OPENAI_BASE_URL": "https://api.openai.com/v1"
-        }
-
-    print(f"\n{Colors.BLUE}>>> 请根据提示输入配置信息 (直接回车可跳过/保持默认):{Colors.ENDC}")
-    categories = {
-        "FEISHU": "飞书 (Feishu) 配置",
-        "OPENAI": "AI (LLM) 配置",
-        "MP_":    "公众号推送配置",
-    }
-    final_config  = []
-    current_cat   = ""
-
-    for key in config_data.keys():
-        matched_cat = "其他"
-        for prefix, title in categories.items():
-            if key.startswith(prefix):
-                matched_cat = title
-                break
-
-        if matched_cat != current_cat:
-            print(f"\n  {Colors.BOLD}[ {matched_cat} ]{Colors.ENDC}")
-            current_cat = matched_cat
-
         try:
-            val = prompt_with_timeout(f"  > {key} [60秒自动跳过]: ", timeout=60)
-        except (EOFError, TimeoutError):
-            print_warn("输入流已关闭或超时，中止当前配置，保留已填项。")
-            break
-        final_config.append(f"{key}={val}\n")
-
-    try:
-        with open(env_path, 'w', encoding='utf-8') as f:
-            f.writelines(final_config)
-        print_success(".env 配置文件已生成！")
-    except Exception as e:
-        print_error(f"写入 .env 失败: {e}")
+            shutil.copyfile(env_example_path, env_path)
+            print_success(f"已根据 .env.example 自动生成初始 .env 文件。")
+            print(f"\n{Colors.YELLOW}{Colors.BOLD}======================================================{Colors.ENDC}")
+            print(f"{Colors.YELLOW}{Colors.BOLD}⚠️  重要提示：需手动配置环境变量{Colors.ENDC}")
+            print(f"{Colors.YELLOW}{Colors.BOLD}请打开文件 {env_path} 并填入您的 API Key 和 飞书密钥。{Colors.ENDC}")
+            print(f"{Colors.YELLOW}{Colors.BOLD}======================================================{Colors.ENDC}\n")
+        except Exception as e:
+            print_error(f"复制配置文件失败: {e}")
+    else:
+        print_warn(".env.example 不存在，请手动创建 .env 文件并填入所需变量。")
 
 # ============================================================
 # 8. AI 人设配置
 # ============================================================
 def setup_persona():
+    """静默为其配备默认的高分人设，不再阻塞询问"""
     print_step("配置内置 AI 人设 (Persona)")
-    personas = [
-        {"name": "AI 工程师 (AI Engineer)",
-         "path": "engineering/engineering-ai-engineer.md"},
-        {"name": "资深前端开发 (Frontend Developer)",
-         "path": "engineering/engineering-frontend-developer.md"},
-        {"name": "软件架构师 (Software Architect)",
-         "path": "engineering/engineering-software-architect.md"},
-        {"name": "飞书集成开发专家 (Feishu Integration Developer)",
-         "path": "engineering/engineering-feishu-integration-developer.md"},
-        {"name": "代码审查专家 (Code Reviewer)",
-         "path": "engineering/engineering-code-reviewer.md"},
-        {"name": "跳过配置 / Skip", "path": None},
-    ]
+    
+    selected_name = "AI 工程师 (AI Engineer)"
+    selected_path = "engineering/engineering-ai-engineer.md"
 
-    for i, p in enumerate(personas):
-        print(f"  [{i+1}] {p['name']}")
+    print(f"  正在下载默认人设: {selected_name} ... ", end="", flush=True)
 
-    if IS_NON_INTERACTIVE or not (sys.stdin.isatty() and sys.stdout.isatty()):
-        print_warn("非交互模式：自动跳过人设配置。")
-        return
+    raw_url = (
+        f"https://raw.githubusercontent.com/msitarzewski/agency-agents/main/{selected_path}"
+    )
+    base_dir    = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+    persona_path = os.path.join(base_dir, "persona.md")
+
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode    = ssl.CERT_NONE
 
     try:
-        choice = prompt_with_timeout(
-            f"\n{Colors.YELLOW}请选择一个内置人设 (1-{len(personas)}) [60秒自动跳过]: {Colors.ENDC}",
-            timeout=60
-        )
-    except (EOFError, TimeoutError):
-        print_warn("输入流已关闭或超时，跳过人设配置。")
-        return
-
-    try:
-        idx = int(choice) - 1
-        if idx < 0 or idx >= len(personas) or personas[idx]["path"] is None:
-            print(f"  {Colors.GREEN}已跳过人设配置。{Colors.ENDC}")
-            return
-
-        selected = personas[idx]
-        print(f"  正在下载人设: {selected['name']} ... ", end="", flush=True)
-
-        raw_url = (
-            f"https://raw.githubusercontent.com/msitarzewski/agency-agents/main/"
-            f"{selected['path']}"
-        )
-        base_dir    = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
-        persona_path = os.path.join(base_dir, "persona.md")
-
-        ctx = ssl.create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode    = ssl.CERT_NONE
-
         req = urllib.request.Request(raw_url, headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req, context=ctx, timeout=15) as response:
             content = response.read().decode('utf-8')
@@ -728,39 +606,28 @@ def setup_persona():
             f.write(content)
 
         print(f"{Colors.GREEN}成功{Colors.ENDC}")
-        print(f"  {Colors.YELLOW}人设已保存至: {persona_path}{Colors.ENDC}")
-
-    except ValueError:
-        print(f"  {Colors.GREEN}输入无效，已跳过人设配置。{Colors.ENDC}")
+        print(f"  {Colors.YELLOW}默认人设已保存至: {persona_path}，您随时可以手动修改。{Colors.ENDC}")
     except Exception as e:
-        print(f"{Colors.RED}获取或保存人设失败: {e}{Colors.ENDC}")
+        print(f"{Colors.RED}获取默认人设失败: {e}{Colors.ENDC}")
 
 # ============================================================
 # 主入口
 # ============================================================
 def main():
-    global IS_NON_INTERACTIVE
-
-    parser = argparse.ArgumentParser(description="OpenClaw 自动配置助手")
-    parser.add_argument("--non-interactive", action="store_true",
-                        help="启用非交互模式，跳过所有用户输入")
+    parser = argparse.ArgumentParser(description="OpenClaw 自动配置助手 (静默安装版)")
     parser.add_argument("--skip-validation", action="store_true",
                         help="跳过仓库地址验证")
     args = parser.parse_args()
 
-    IS_NON_INTERACTIVE = args.non_interactive
-
     print(f"{Colors.HEADER}{Colors.BOLD}=======================================")
-    print("   OpenClaw 自动配置助手 (傻瓜模式)")
+    print("   OpenClaw 自动配置助手 (静默配置模式)")
     print(f"======================================={Colors.ENDC}")
 
-    if IS_NON_INTERACTIVE:
-        print_warn("正在以非交互模式运行，将使用默认配置。")
-
     print(f"{Colors.BLUE}本工具将自动完成以下操作：")
-    print("1. 诊断环境、配置飞书通道")
+    print("1. 诊断环境、静默部署飞书通道")
     print("2. 智能感知网络环境并选择最优技能同步源 (GitHub 官方 / SkillHub 国内加速)")
-    print("3. 全量编排核心技能库并进行交互式配置")
+    print("3. 全量编排核心技能库，生成 .env 模板并下发系统人设")
+    print("注意：遵循 OpenClaw 准则，本脚本不包含任何阻塞交互动作。")
     print(f"---------------------------------------{Colors.ENDC}")
 
     # 0. 环境诊断
@@ -788,8 +655,8 @@ def main():
         install_via_clawhub()
         install_skills()
 
-    # 4. 交互式配置
-    interactive_config()
+    # 4. 环境配置模板生成
+    setup_env_template()
 
     # 5. 引导内置人设
     setup_persona()
