@@ -6,6 +6,7 @@ import argparse
 import urllib.request
 import ssl
 import json
+import select
 
 # ============================================================
 # 颜色常量
@@ -540,16 +541,51 @@ def install_skills():
                     print(f"{Colors.RED}克隆异常: {str(e)}{Colors.ENDC}")
 
 # ============================================================
-# 7. AI 人设配置
+# 8. AI 人设配置
 # ============================================================
 def setup_persona():
-    """静默为其配备默认的高分人设，不再阻塞询问"""
+    """提供选择菜单让用户挑选默认的人设，并将其设为基础文档。具有带超时的防挂死兜底。"""
     print_step("配置内置 AI 人设 (Persona)")
+    personas = [
+        {"name": "AI 工程师 (AI Engineer)", "path": "engineering/engineering-ai-engineer.md"},
+        {"name": "资深前端开发 (Frontend Developer)", "path": "engineering/engineering-frontend-developer.md"},
+        {"name": "软件架构师 (Software Architect)", "path": "engineering/engineering-software-architect.md"},
+        {"name": "飞书集成开发专家 (Feishu Integration Developer)", "path": "engineering/engineering-feishu-integration-developer.md"},
+        {"name": "代码审查专家 (Code Reviewer)", "path": "engineering/engineering-code-reviewer.md"}
+    ]
     
-    selected_name = "AI 工程师 (AI Engineer)"
-    selected_path = "engineering/engineering-ai-engineer.md"
+    print(f"{Colors.BLUE}可供注入到 OpenClaw 的顶级人设模型：{Colors.ENDC}")
+    for i, p in enumerate(personas):
+        print(f"  [{i+1}] {p['name']}")
+    print(f"  [0] 跳过设置 (或直接回车保持默认空)")
 
-    print(f"  正在下载默认人设: {selected_name} ... ", end="", flush=True)
+    # 为了防止后台执行/CI环境无限卡住被强杀，带有 60 秒超时控制
+    print(f"\n{Colors.YELLOW}请选择需要注入的人设编号 (0-{len(personas)}, 60秒未操作将默认为空): {Colors.ENDC}", end="", flush=True)
+    
+    choice = "0"
+    if sys.stdin.isatty():
+        ready, _, _ = select.select([sys.stdin], [], [], 60)
+        if ready:
+            choice = sys.stdin.readline().strip()
+        else:
+            print("\n")
+    else:
+        # 非交互环境直接跳过
+        print("\n检测到非互操作流，默认跳过人设。")
+
+    if not choice or not choice.isdigit():
+        print(f"  {Colors.GREEN}未选择，人设配置将保留为空。{Colors.ENDC}")
+        return
+        
+    idx = int(choice) - 1
+    if idx < 0 or idx >= len(personas):
+        print(f"  {Colors.GREEN}已跳过或输入无效，不配置人设。{Colors.ENDC}")
+        return
+
+    selected_name = personas[idx]['name']
+    selected_path = personas[idx]['path']
+
+    print(f"  正在为您下载设置人设库: {selected_name} ... ", end="", flush=True)
 
     urls_to_try = [
         f"https://ghfast.top/https://raw.githubusercontent.com/msitarzewski/agency-agents/main/{selected_path}",
@@ -582,9 +618,9 @@ def setup_persona():
 
     if success:
         print(f"{Colors.GREEN}成功{Colors.ENDC}")
-        print(f"  {Colors.YELLOW}默认人设已保存至: {persona_path}，您随时可以手动修改。{Colors.ENDC}")
+        print(f"  {Colors.YELLOW}人设已成功设置到基础文档: {persona_path}{Colors.ENDC}")
     else:
-        print(f"{Colors.RED}获取默认人设失败（所有镜像节点皆已超时）: {last_err}{Colors.ENDC}")
+        print(f"{Colors.RED}获取人设库失败（所有镜像节点皆已超时）: {last_err}{Colors.ENDC}")
 
 # ============================================================
 # 主入口
