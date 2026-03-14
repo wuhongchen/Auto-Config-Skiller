@@ -41,6 +41,7 @@ GITHUB_PROXY = "https://ghfast.top/"
 # ============================================================
 IS_CLAWHUB_LOGGED_IN = False
 IS_NON_INTERACTIVE   = False
+IS_GITHUB_ACCESSIBLE = True
 
 # 国内 npm 加速镜像
 CHINA_REGISTRY = "https://registry.npmmirror.com"
@@ -118,6 +119,7 @@ SKILL_STORE = {
 # 1. 环境诊断 (Environment Diagnosis)
 # ============================================================
 def check_network(host="github.com"):
+    global IS_GITHUB_ACCESSIBLE
     print(f"  - 网络连通性 ({host}): ", end="", flush=True)
     try:
         subprocess.check_output(
@@ -125,9 +127,11 @@ def check_network(host="github.com"):
             stderr=subprocess.STDOUT
         )
         print(f"{Colors.GREEN}畅通{Colors.ENDC}")
+        IS_GITHUB_ACCESSIBLE = True
         return True
     except Exception:
         print(f"{Colors.RED}受限 (可能需要代理){Colors.ENDC}")
+        IS_GITHUB_ACCESSIBLE = False
         return False
 
 def check_permissions():
@@ -753,7 +757,7 @@ def main():
 
     print(f"{Colors.BLUE}本工具将自动完成以下操作：")
     print("1. 诊断环境、配置飞书通道")
-    print("2. 自动集成腾讯 SkillHub 加速源 (免登录同步核心技能)")
+    print("2. 智能感知网络环境并选择最优技能同步源 (GitHub 官方 / SkillHub 国内加速)")
     print("3. 全量编排核心技能库并进行交互式配置")
     print(f"---------------------------------------{Colors.ENDC}")
 
@@ -762,16 +766,25 @@ def main():
 
     # 1. 验证仓库地址 (可选)
     if not args.skip_validation:
-        validate_repository_urls()
+        if IS_GITHUB_ACCESSIBLE:
+            validate_repository_urls()
+        else:
+            print_warn("网络已受限，为避免耗时过长，已自动跳过仓库 URL 地址连通性探测。")
 
     # 2. 飞书官方插件部署（非交互或非 TTY 时自动跳过）
     install_feishu_plugin()
 
     # 3. 技能安装优先级流
-    #    优先 SkillHub（国内加速）→ ClawHub（官方补全）→ Git（最终兜底）
-    install_via_skillhub()
-    install_via_clawhub()
-    install_skills()
+    #    动态网络感知：GitHub 畅通 -> 官方源；受限 -> 腾讯加速源兜底
+    if IS_GITHUB_ACCESSIBLE:
+        print(f"\n{Colors.BLUE}>>> 检测到 GitHub 访问畅通，将使用官方源 (ClawHub / Git) 同步技能...{Colors.ENDC}")
+        install_via_clawhub()
+        install_skills()
+    else:
+        print(f"\n{Colors.YELLOW}>>> 检测到 GitHub 访问受限，优先使用国内加速源 (Tencent SkillHub) 同步技能...{Colors.ENDC}")
+        install_via_skillhub()
+        install_via_clawhub()
+        install_skills()
 
     # 4. 交互式配置
     interactive_config()
