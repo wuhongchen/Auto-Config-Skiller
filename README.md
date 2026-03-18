@@ -11,7 +11,8 @@
 - ⚡ **多源加速下载机制**：无缝集成 **ClawHub**、**Tencent SkillHub（国内加速）** 以及 **GitHub Fast Proxy（防墙直连）**，无惧任何网络或登录限制。
 - 🛠️ **预装全套高分技能**：为您预置经过实战检验的核心全家桶（如安全扫描、路由、自我优化 Agent、多引擎搜索等）。
 - 🤫 **符合官方规范的静默安装**：完全无阻塞执行，自动生成 `.env` 配置文件模板，后续按需修改，丝滑融入自动化流水线。
-- 🎭 **一键下发专业人设**：基于权威社区提示词库，自动为您置入顶级 Prompt 模板（如 AI 工程师）。
+- 🧭 **安装链路自检与自动降级**：启动时检测 GitHub / ClawHub / SkillHub 连通性，不通时自动切换到可用链路，并在 Git 失败时降级到源码包方式。
+- 🎭 **可选人设注入**：默认无交互跳过人设，支持通过参数一次性注入指定 Persona。
 
 ---
 
@@ -30,14 +31,20 @@ npx clawhub install https://github.com/wuhongchen/Auto-Config-Skiller.git
 
 ## 🚀 使用方法 (Usage)
 
-安装成功后，进入到技能目录并执行引导脚本即可开启自动化配置流：
+安装成功后，进入技能目录执行：
 
 ```bash
 cd <您的 OpenClaw 工作区>/auto-config-skiller
-./setup.sh
+./setup.sh --skip-persona
 ```
 
 *(如果提示没有执行权限，通常只需要运行一次 `chmod +x setup.sh`。事实上，如果您通过 OpenClaw 官方包管理器安装，此步已被自动处理。)*
+
+如果你希望注入默认人设（非交互）：
+
+```bash
+python3 scripts/diagnose_and_install.py --persona 1
+```
 
 ### 🎁 您将完整获得的“弹药库”
 本助手并非简单的脚本，它内部集成了强大的工作流机制和丰厚的开箱即用插件。运行 `setup.sh` 后，它将自动为您加载以下五大板块的能力：
@@ -56,7 +63,7 @@ cd <您的 OpenClaw 工作区>/auto-config-skiller
 #### 3. 🤖 Persona 灵魂注入系统 (Auto-Prompting)
 不需要您去学晦涩深奥的提示词工程：
 - 开箱集成由资深极客维护的 [agency-agents](https://github.com/msitarzewski/agency-agents) 高级人设项目。
-- 自动化流中提供了高达 60 秒的延时带参选择菜单，您可以自主化身为：AI 工程师、架构师或代码审查专家。若不操作则自动跳过，契合 OpenClaw 完全后台静默式运转的第一原则。
+- 默认无交互模式下自动跳过人设注入；可通过 `--persona <编号>` 进行一次性注入，或通过 `--interactive-persona` 进入终端选择。
 
 #### 4. 🧰 特级高分能力组 (The 13 Core Skills)
 系统将并行且以最新分支为您全自动装载经过 OpenClaw 官方社区认证的 13 大金牌防爆模块，实现：全栈打通。

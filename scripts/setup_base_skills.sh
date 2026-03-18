@@ -1,9 +1,9 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # OpenClaw 基础技能自动配置脚本
-# 作者: Antigravity
+# 作者: W 或者 麻小
 
-set -e
+set -euo pipefail
 
 # 颜色定义
 GREEN='\033[0;32m'
@@ -49,7 +49,7 @@ for name in "${!SKILLS[@]}"; do
         echo -e "${BLUE}- 技能 [${name}] 已存在，跳过克隆。${NC}"
     else
         echo -e "${BLUE}- 正在克隆 [${name}]...${NC}"
-        git clone "${SKILLS[@]/${name}/}" "$target_path" || echo -e "${RED}克隆 ${name} 失败，请检查网络或地址。${NC}"
+        git clone "${SKILLS[$name]}" "$target_path" || echo -e "${RED}克隆 ${name} 失败，请检查网络或地址。${NC}"
     fi
 done
 

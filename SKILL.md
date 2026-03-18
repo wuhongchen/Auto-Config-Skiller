@@ -1,40 +1,58 @@
-# Auto Config Skiller (自动配置助手)
+---
+name: auto-config-skiller
+slug: auto-config-skiller
+version: 1.2.0
+description: OpenClaw 环境诊断 + 核心技能自动安装助手，默认无交互执行。
+metadata:
+  clawdbot:
+    emoji: "🛠️"
+    os: ["darwin", "linux"]
+    requires:
+      bins: ["python3", "git", "npx"]
+  openclaw:
+    type: skill
+    entry: setup.sh
+---
 
-该技能旨在为 OpenClaw 用户提供一键式的环境初始化、基础技能安装及核心配置服务。
+# Auto Config Skiller
 
-## 场景描述
-当你刚刚安装好基础的 OpenClaw 后，可以使用此技能快速补全“小龙虾”生态所需的核心 Skill 和 Python 依赖库，避免手动克隆仓库和配置 `.env` 的繁琐过程。
+用于 OpenClaw 新环境的一键初始化：体检、安装链路自检、自动降级安装、通道插件安装、技能同步、`.env` 模板生成。
 
-## 核心分类编排
-为了让 OpenClaw 更具战斗力，我们将技能分为以下四个核心维度：
+## 何时使用
 
-1. **通讯 (Communication)**
-   - `Feishu-OpenClaw`: 飞书官方插件，支持文档、群聊、日历及 Meego 深度集成。
-2. **基础工具 (Basic Tools)**
-   - `CN-Life Toolkit`: 国内生活服务（天气、快递、油价等）。
-   - `Exec Tool / Web Search`: 核心执行与搜索能力。
-3. **优化工具 (Optimization Tools)**
-   - `Skill-Self-Improving`: 让 AI 在交互中自我优化。
-   - `ClawRouter`: 智能路由，优化成本。
-4. **安全工具 (Security Tools) - [必装]**
-   - `Skill-Vetter`: 技能审计大师，安装其他技能前的第一道防线。
-   - `Clawscan`: 安全扫描。
+- 用户说“初始化 OpenClaw”“一键装基础技能”“帮我配置环境”。
+- 工作区刚创建，缺少常用技能和配置模板。
 
-## 工作流 (Workflows)
-1. **环境诊断 (Diagnosis)**
-   - **官方通道**: 集成飞书诊断与修复工具 `openclaw-lark-tools`。
-   - **配置自检**: 自动识别 `.env` 配置文件状态及目录写入权限。
-   - **资源评估**: 检测磁盘空间等基础硬件状态。
-2. **分类调研 (Research)**
-   - 自动拉取 ClawHub 推荐列表，识别核心工具。
-3. **全流程自动化安装 (Full Auto-Install)**
-   - **一键启动**: 通过 `./setup.sh` 开启傻瓜化配置流。
-   - **多源加速**: 集成 ClawHub 与 Tencent SkillHub，自动绕过登录限制与网络障碍。
-   - **全静默执行**: 严格遵守 OpenClaw 无阻塞工作流规范，全后台静默运行并自动生成 `.env` 模板。
-   - **灵魂注入**: 预设 `agency-agents` 库，一键下载高分 AI 人设 Prompt 至当前工作区。
+## OpenClaw 调用方式
 
-详细的操作指引与场景说明请参阅：[使用指南 (USAGE_GUIDE.md)](./docs/USAGE_GUIDE.md)
+优先使用默认无交互模式：
 
+```bash
+./setup.sh --skip-persona
+```
 
-## 维护者
-Antigravity
+如果要注入人设，可显式指定编号（非交互）：
+
+```bash
+python3 scripts/diagnose_and_install.py --persona 1
+```
+
+仅在用户明确要求时，才使用交互选择：
+
+```bash
+python3 scripts/diagnose_and_install.py --interactive-persona
+```
+
+## 常用参数
+
+- `--skills-dir <path>`: 指定技能安装目录。
+- `--skip-feishu`: 跳过飞书插件部署。
+- `--skip-validation`: 跳过 Git 仓库连通性验证。
+- `--skip-persona`: 跳过人设注入。
+- `--dry-run`: 仅打印执行计划，不真实安装。
+
+## 目录约定
+
+- 优先使用 `OPENCLAW_SKILLS_DIR` 或 `OPENCLAW_WORKSPACE/skills`。
+- 若目录结构符合 `<workspace>/skills/<this-skill>`，则自动安装到 `<workspace>/skills`。
+- `persona.md` 与 `.env` 生成在工作区目录（默认是 `<workspace>`）。

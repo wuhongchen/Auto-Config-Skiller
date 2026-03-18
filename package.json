@@ -1,10 +1,11 @@
 {
   "name": "auto-config-skiller",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "OpenClaw 自动环境诊断与技能一键配置工具",
-  "main": "scripts/diagnose_and_install.py",
+  "main": "setup.sh",
   "scripts": {
-    "install": "chmod +x setup.sh && ./setup.sh"
+    "install": "chmod +x setup.sh && ./setup.sh --skip-persona",
+    "start": "./setup.sh --skip-persona"
   },
   "keywords": [
     "openclaw-skill",
@@ -15,6 +16,6 @@
   "license": "MIT",
   "openclaw": {
     "type": "skill",
-    "entry": "scripts/diagnose_and_install.py"
+    "entry": "setup.sh"
   }
 }

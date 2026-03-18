@@ -11,18 +11,18 @@ npx clawhub install https://github.com/wuhongchen/Auto-Config-Skiller.git
 ```
 
 ```bash
-./setup.sh
+./setup.sh --skip-persona
 ```
 
-> ⚠️ **遵循 OpenClaw 设计理念**：本工具全程采用**静默式无阻塞执行（Silent Execution）**，不会在终端进行任何需要人为介入的弹窗拦截或交互询问。它将在后台丝滑平稳地为您准备好一切！
+> ⚠️ **遵循 OpenClaw 设计理念**：默认采用**静默式无阻塞执行（Silent Execution）**。如需人设注入，请显式传参，避免后台任务被交互阻塞。
 
 ---
 
 ## 🛠 一键配置标准工作流 (Standard Workflow)
 
-只需运行一个命令，即可完成从环境体检到灵魂注入的全过程：
+只需运行一个命令，即可完成从环境体检到核心技能同步的全过程：
 ```bash
-./setup.sh
+./setup.sh --skip-persona
 ```
 
 ### 第一步：全方位环境诊断 (Diagnosis)
@@ -31,6 +31,7 @@ npx clawhub install https://github.com/wuhongchen/Auto-Config-Skiller.git
 - **环境探测**：自动识别当前的 OpenClaw 版本。
 - **资源就绪**：检查磁盘写入权限及 `.env` 配置文件状态。
 - **网络测试**：实时测试 GitHub 及官方注册表的连通性，自动切换国内备用镜像。
+- **安装链路自检**：额外检测 ClawHub Registry 与 SkillHub 安装链路，自动决策安装路径。
 
 ### 第二步：飞书通讯枢纽部署 (Feishu Plugin)
 通过官方工具链 `@larksuite/openclaw-lark-tools` 快速建立通讯桥梁：
@@ -42,16 +43,30 @@ npx clawhub install https://github.com/wuhongchen/Auto-Config-Skiller.git
 - **免登录安装**：优先使用腾讯源安装 `skill-vetter`、`channels-setup` 等高分技能，绕过官方源的付费或登录校验。
 - **高分应用全家桶**：自动为您装好 `self-improving-agent`、`github`、`agent-browser` 等 Agent 必备工具。
 - **版本锁定**：自动匹配各个技能的最稳定分支（main/master），确保环境一致性。
+- **失败降级**：Git clone 失败后自动降级为源码包下载解压，降低弱网和认证异常导致的中断概率。
 
 ### 第四步：环境配置模板下发 (Auto .env)
 再也不用手动去复制粘贴 `.env.example`，工具会静默检查配置状态：
 - **安全拷贝**：如未配置，将为您自动复制生成 `.env` 初始配置模板。
 - **配置指引**：在控制台打印醒目的提醒，引导您在脚本运行结束后自行填入飞书密钥、API Key 等关键参数（符合完全隔离的自动化设计）。
 
-### 第五步：AI 灵魂静默注入 (Persona Injection)
+### 第五步：AI 灵魂注入 (可选 Persona Injection)
 基于开源高分项目 `msitarzewski/agency-agents` 库：
-- **默认武装**：在后台自动下载并配置“AI 工程师 (AI Engineer)”经典人设到 `persona.md`。
+- **默认行为**：无交互模式下跳过人设注入，保持 OpenClaw 后台任务稳定。
+- **按需武装**：可通过 `--persona 1` 在后台一次性注入“AI 工程师 (AI Engineer)”到 `persona.md`。
 - **灵活替换**：此人设将作为 System Prompt 注入您的终端环境。后续如需切换职业，您可直接手动编辑或覆盖 `persona.md` 文件。
+
+示例：
+
+```bash
+python3 scripts/diagnose_and_install.py --persona 1
+```
+
+如需人工选择：
+
+```bash
+python3 scripts/diagnose_and_install.py --interactive-persona
+```
 
 ---
 
